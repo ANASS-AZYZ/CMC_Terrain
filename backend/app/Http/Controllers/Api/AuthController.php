@@ -16,18 +16,21 @@ use Throwable;
 
 class AuthController extends Controller
 {
+    private const GMAIL_EMAIL_REGEX = '/^[^\\s@]+@gmail\\.com$/i';
+
     public function register(Request $request): JsonResponse
     {
         $payload = $request->validate([
             'first_name' => ['required', 'string', 'max:80'],
             'last_name' => ['required', 'string', 'max:80'],
-            'email' => ['required', 'email', 'max:120', Rule::unique('users', 'email')],
+            'email' => ['required', 'email', 'max:120', 'regex:'.self::GMAIL_EMAIL_REGEX, Rule::unique('users', 'email')],
             'cin' => ['required', 'string', 'max:40', Rule::unique('users', 'cin')],
             'class_name' => ['required', 'string', 'max:120'],
             'filiere' => ['required', 'string', 'max:120'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ], [
             'email.unique' => 'Le gmail que vous avez saisi existe deja.',
+            'email.regex' => 'L\'email doit se terminer par @gmail.com.',
             'cin.unique' => 'Le CIN que vous avez saisi existe deja.',
         ]);
 
@@ -51,10 +54,134 @@ class AuthController extends Controller
         $user->student_id = 'STG'.str_pad((string) $user->id, 6, '0', STR_PAD_LEFT);
         $user->save();
 
+        try {
+            $verificationCode = $this->issueEmailVerificationCode($user);
+            $this->sendEmailVerificationCode($user->email, $verificationCode);
+        } catch (Throwable $e) {
+            Log::error('Failed to send account verification email.', [
+                'email' => $user->email,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Compte cree, mais envoi du code de verification echoue. Reessayez plus tard.',
+            ], 503);
+        }
+
         return response()->json([
-            'message' => 'Account created successfully. You can now sign in.',
+            'message' => 'Account created successfully. Verification code sent to your Gmail.',
             'user' => $user,
         ], 201);
+    }
+
+    public function verifyEmailCode(Request $request): JsonResponse
+    {
+        $payload = $request->validate([
+            'email' => ['required', 'email', 'regex:'.self::GMAIL_EMAIL_REGEX],
+            'code' => ['required', 'digits:6'],
+        ], [
+            'email.regex' => 'L\'email doit se terminer par @gmail.com.',
+        ]);
+
+        $email = strtolower(trim((string) $payload['email']));
+        $code = trim((string) $payload['code']);
+
+        $user = User::query()->where('email', $email)->first();
+        if (! $user) {
+            return response()->json(['message' => 'User not found.'], 404);
+        }
+
+        if ($user->email_verified_at) {
+            return response()->json(['message' => 'Email already verified.']);
+        }
+
+        $row = DB::table('email_verification_codes')
+            ->where('user_id', $user->id)
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $row || Carbon::parse($row->expires_at)->isPast()) {
+            return response()->json(['message' => 'Verification code expired or invalid.'], 422);
+        }
+
+        if ((int) $row->attempts >= 5) {
+            DB::table('email_verification_codes')->where('id', $row->id)->delete();
+
+            return response()->json([
+                'message' => 'Too many attempts. Please request a new verification code.',
+            ], 429);
+        }
+
+        if (! hash_equals((string) $row->code_hash, hash('sha256', $code))) {
+            $nextAttempts = (int) $row->attempts + 1;
+
+            DB::table('email_verification_codes')
+                ->where('id', $row->id)
+                ->update([
+                    'attempts' => $nextAttempts,
+                    'updated_at' => now(),
+                ]);
+
+            return response()->json(['message' => 'Verification code is incorrect.'], 422);
+        }
+
+        $user->email_verified_at = now();
+        $user->save();
+
+        DB::table('email_verification_codes')->where('user_id', $user->id)->delete();
+
+        return response()->json(['message' => 'Email verified successfully. You can now sign in.']);
+    }
+
+    public function resendEmailVerificationCode(Request $request): JsonResponse
+    {
+        $payload = $request->validate([
+            'email' => ['required', 'email', 'regex:'.self::GMAIL_EMAIL_REGEX],
+        ], [
+            'email.regex' => 'L\'email doit se terminer par @gmail.com.',
+        ]);
+
+        $email = strtolower(trim((string) $payload['email']));
+        $user = User::query()->where('email', $email)->first();
+
+        if (! $user) {
+            return response()->json(['message' => 'User not found.'], 404);
+        }
+
+        if ($user->email_verified_at) {
+            return response()->json(['message' => 'Email already verified.'], 422);
+        }
+
+        $latest = DB::table('email_verification_codes')
+            ->where('user_id', $user->id)
+            ->orderByDesc('id')
+            ->first();
+
+        if (
+            $latest
+            && Carbon::parse($latest->created_at)->gt(Carbon::now()->subSeconds(45))
+            && ! Carbon::parse($latest->expires_at)->isPast()
+        ) {
+            return response()->json([
+                'message' => 'Veuillez patienter quelques secondes avant de demander un nouveau code.',
+            ], 429);
+        }
+
+        try {
+            $verificationCode = $this->issueEmailVerificationCode($user);
+            $this->sendEmailVerificationCode($user->email, $verificationCode);
+        } catch (Throwable $e) {
+            Log::error('Failed to resend account verification email.', [
+                'email' => $user->email,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Service email indisponible pour le moment. Veuillez reessayer plus tard.',
+            ], 503);
+        }
+
+        return response()->json(['message' => 'Verification code sent to your Gmail.']);
     }
 
     public function forgotPassword(Request $request): JsonResponse
@@ -235,7 +362,7 @@ class AuthController extends Controller
         $payload = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string', 'min:6'],
-            'portal' => ['required', 'in:admin,stagiaire'],
+            'portal' => ['required', 'in:admin,stagiaire,monitor'],
         ]);
 
         /** @var User|null $user */
@@ -243,6 +370,10 @@ class AuthController extends Controller
 
         if (!$user || !Hash::check($payload['password'], $user->password)) {
             return response()->json(['message' => 'Invalid credentials'], 422);
+        }
+
+        if (! $user->email_verified_at) {
+            return response()->json(['message' => 'Please verify your Gmail before signing in.'], 403);
         }
 
         if ($payload['portal'] === 'admin') {
@@ -254,6 +385,10 @@ class AuthController extends Controller
 
         if ($payload['portal'] === 'stagiaire' && $user->role !== 'stagiaire') {
             return response()->json(['message' => 'Stagiaire access denied'], 403);
+        }
+
+        if ($payload['portal'] === 'monitor' && $user->role !== 'monitor') {
+            return response()->json(['message' => 'Monitor access denied'], 403);
         }
 
         $plainToken = bin2hex(random_bytes(40));
@@ -286,10 +421,12 @@ class AuthController extends Controller
             'first_name' => ['sometimes', 'nullable', 'string', 'max:80'],
             'last_name' => ['sometimes', 'nullable', 'string', 'max:80'],
             'name' => ['sometimes', 'nullable', 'string', 'max:120'],
-            'email' => ['sometimes', 'email', 'max:120', 'unique:users,email,'.$user->id],
+            'email' => ['sometimes', 'email', 'max:120', 'regex:'.self::GMAIL_EMAIL_REGEX, 'unique:users,email,'.$user->id],
             'cin' => ['sometimes', 'nullable', 'string', 'max:40'],
             'class_name' => ['sometimes', 'nullable', 'string', 'max:120'],
             'filiere' => ['sometimes', 'nullable', 'string', 'max:120'],
+        ], [
+            'email.regex' => 'L\'email doit se terminer par @gmail.com.',
         ]);
 
         if (
@@ -361,5 +498,39 @@ class AuthController extends Controller
         $user->save();
 
         return response()->json(['message' => 'Password updated successfully']);
+    }
+
+    private function issueEmailVerificationCode(User $user): string
+    {
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        DB::table('email_verification_codes')->updateOrInsert(
+            ['user_id' => $user->id],
+            [
+                'code_hash' => hash('sha256', $code),
+                'expires_at' => Carbon::now()->addMinutes(15),
+                'attempts' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        );
+
+        return $code;
+    }
+
+    private function sendEmailVerificationCode(string $email, string $code): void
+    {
+        $logoUrl = rtrim((string) config('app.url'), '/').'/image.png';
+
+        Mail::send(
+            'emails.account-verification-code',
+            [
+                'code' => $code,
+                'logoUrl' => $logoUrl,
+            ],
+            function ($message) use ($email): void {
+                $message->to($email)->subject('CMC SportBooking - Verify your Gmail');
+            }
+        );
     }
 }

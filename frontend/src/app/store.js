@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit'
 import authReducer from '../features/auth/authSlice'
 import dashboardReducer from '../features/dashboard/dashboardSlice'
 import matchesReducer from '../features/matches/matchesSlice'
+import monitorsReducer from '../features/monitors/monitorsSlice'
 import reservationsReducer from '../features/reservations/reservationsSlice'
 import stagiairesReducer from '../features/stagiaires/stagiairesSlice'
 import terrainsReducer from '../features/terrains/terrainsSlice'
@@ -14,6 +15,7 @@ export const store = configureStore({
     dashboard: dashboardReducer,
     terrains: terrainsReducer,
     matches: matchesReducer,
+    monitors: monitorsReducer,
     reservations: reservationsReducer,
     stagiaires: stagiairesReducer,
   },

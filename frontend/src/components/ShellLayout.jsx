@@ -79,6 +79,7 @@ export default function ShellLayout() {
   const theme = useAppSelector((state) => state.ui.theme)
   const language = useAppSelector((state) => state.ui.language)
   const isAdmin = user?.role === 'admin'
+  const isMonitor = user?.role === 'monitor'
   const [openLangMenu, setOpenLangMenu] = useState(false)
   const [openUserMenu, setOpenUserMenu] = useState(false)
   const langMenuRef = useRef(null)
@@ -86,6 +87,8 @@ export default function ShellLayout() {
 
   const primaryLinks = isAdmin
     ? [{ to: '/admin/dashboard', label: t('dashboard'), icon: 'grid' }]
+    : isMonitor
+      ? [{ to: '/monitor/reservations', label: t('manageReservations'), icon: 'grid' }]
     : [
         { to: '/stagiaire/home', label: t('home'), icon: 'calendar' },
         { to: '/stagiaire/my-reservations', label: t('myReservations'), icon: 'grid' },
@@ -97,6 +100,7 @@ export default function ShellLayout() {
         { to: '/admin/terrains', label: t('manageTerrains'), icon: 'users' },
         { to: '/admin/reservations', label: t('manageReservations'), icon: 'terrain' },
         { to: '/admin/stagiaires', label: t('manageStagiaires'), icon: 'megaphone' },
+        { to: '/admin/monitors', label: t('manageMonitors'), icon: 'users' },
       ]
     : []
 
@@ -126,10 +130,10 @@ export default function ShellLayout() {
     return () => document.removeEventListener('click', onDocClick)
   }, [])
 
-  const isDashboard = isAdmin ? location.pathname === '/admin/dashboard' : location.pathname === '/stagiaire/home'
-  const isGroupSchedule = isAdmin ? location.pathname.startsWith('/admin/terrains') : location.pathname === '/stagiaire/my-reservations'
-  const isSupport = !isAdmin && location.pathname === '/stagiaire/contact-support'
-  const displayName = user?.name ?? (isAdmin ? 'Admin' : 'User')
+  const isDashboard = isAdmin ? location.pathname === '/admin/dashboard' : isMonitor ? location.pathname === '/monitor/reservations' : location.pathname === '/stagiaire/home'
+  const isGroupSchedule = isAdmin ? location.pathname.startsWith('/admin/terrains') : isMonitor ? location.pathname === '/monitor/reservations' : location.pathname === '/stagiaire/my-reservations'
+  const isSupport = !isAdmin && !isMonitor && location.pathname === '/stagiaire/contact-support'
+  const displayName = user?.name ?? (isAdmin ? 'Admin' : isMonitor ? 'Monitor' : 'User')
   const studentIdLabel = user?.student_id || (user?.id ? `STG${String(user.id).padStart(6, '0')}` : 'STG------')
 
   return (
@@ -194,13 +198,13 @@ export default function ShellLayout() {
           </div>
 
           <div className="admin-top-navs">
-            <Link to={isAdmin ? '/admin/dashboard' : '/stagiaire/home'} className={isDashboard ? 'admin-top-link active' : 'admin-top-link'}>
-              {isAdmin ? t('dashboard') : t('home')}
+            <Link to={isAdmin ? '/admin/dashboard' : isMonitor ? '/monitor/reservations' : '/stagiaire/home'} className={isDashboard ? 'admin-top-link active' : 'admin-top-link'}>
+              {isAdmin ? t('dashboard') : isMonitor ? t('manageReservations') : t('home')}
             </Link>
-            <Link to={isAdmin ? '/admin/terrains' : '/stagiaire/my-reservations'} className={isGroupSchedule ? 'admin-top-link active' : 'admin-top-link'}>
-              {isAdmin ? t('manageTerrains') : t('myReservations')}
+            <Link to={isAdmin ? '/admin/terrains' : isMonitor ? '/monitor/profile' : '/stagiaire/my-reservations'} className={isGroupSchedule ? 'admin-top-link active' : 'admin-top-link'}>
+              {isAdmin ? t('manageTerrains') : isMonitor ? t('profile') : t('myReservations')}
             </Link>
-            {!isAdmin ? (
+            {!isAdmin && !isMonitor ? (
               <Link to="/stagiaire/contact-support" className={isSupport ? 'admin-top-link active' : 'admin-top-link'}>
                 {t('contactSupport')}
               </Link>
@@ -208,7 +212,7 @@ export default function ShellLayout() {
           </div>
 
           <div className="admin-top-actions">
-            {!isAdmin ? <span className="student-id-chip">{t('studentId')}: {studentIdLabel}</span> : null}
+            {!isAdmin && !isMonitor ? <span className="student-id-chip">{t('studentId')}: {studentIdLabel}</span> : null}
             <button
               type="button"
               className="icon-btn"
@@ -254,16 +258,18 @@ export default function ShellLayout() {
 
               {openUserMenu ? (
                 <div className="user-menu-list">
-                  <button
-                    type="button"
-                    className="user-menu-item"
-                    onClick={() => {
-                      setOpenUserMenu(false)
-                      navigate(isAdmin ? '/admin/profile' : '/stagiaire/profile')
-                    }}
-                  >
-                    {t('profile')}
-                  </button>
+                  {!isMonitor ? (
+                    <button
+                      type="button"
+                      className="user-menu-item"
+                      onClick={() => {
+                        setOpenUserMenu(false)
+                        navigate(isAdmin ? '/admin/profile' : '/stagiaire/profile')
+                      }}
+                    >
+                      {t('profile')}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="user-menu-item danger"

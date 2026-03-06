@@ -14,7 +14,9 @@ export default function LoginPage({ forcedPortal = null }) {
   const language = useAppSelector((state) => state.ui.language)
   const theme = useAppSelector((state) => state.ui.theme)
 
-  const [portal, setPortal] = useState(forcedPortal === 'admin' ? 'admin' : 'stagiaire')
+  const [portal, setPortal] = useState(
+    forcedPortal === 'admin' ? 'admin' : forcedPortal === 'monitor' ? 'monitor' : 'stagiaire',
+  )
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(false)
@@ -31,7 +33,17 @@ export default function LoginPage({ forcedPortal = null }) {
       return
     }
 
-    navigate(user.role === 'admin' ? '/admin/dashboard' : '/stagiaire/reservations')
+    if (user.role === 'admin') {
+      navigate('/admin/dashboard')
+      return
+    }
+
+    if (user.role === 'monitor') {
+      navigate('/monitor/reservations')
+      return
+    }
+
+    navigate('/stagiaire/reservations')
   }, [navigate, token, user])
 
   useEffect(() => {
@@ -66,86 +78,78 @@ export default function LoginPage({ forcedPortal = null }) {
   const isDark = theme === 'dark'
 
   return (
-    <div className={`min-h-screen flex flex-col ${isDark ? 'bg-[#0f1724] text-[#e7edf6]' : 'bg-[#f6f7f9] text-[#132738]'}`}>
-      <header className={`h-[74px] px-4 md:px-8 border-b ${isDark ? 'bg-[#172334] border-[#25354a]' : 'bg-[#f0f1f3] border-[#d9e1e9]'}`}>
-        <div className="w-full max-w-[1320px] h-full mx-auto flex items-center justify-between">
-          <div className={`flex items-center ${isDark ? 'text-[#eff5ff]' : 'text-[#18262f]'}`}>
-            <img src={cmcLogo} alt="CMC SportBooking" className="h-11 w-auto object-contain" />
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="bg-[#7eb6de] text-[#122b3d] rounded-[9px] px-5 py-2 font-['Sora'] font-bold text-sm shadow-[0_8px_20px_-16px_#2f7db4]"
-            >
-              {t('support')}
-            </button>
-            <button
-              type="button"
-              title={theme === 'light' ? t('darkMode') : t('lightMode')}
-              aria-label={theme === 'light' ? t('darkMode') : t('lightMode')}
-              onClick={() => dispatch(setTheme(theme === 'light' ? 'dark' : 'light'))}
-              className={`w-10 h-10 rounded-full border grid place-items-center transition-colors ${isDark ? 'border-[#35506d] bg-[#1b2b40] text-[#d1deeb]' : 'border-[#e3e9f0] bg-[#f7f9fc] text-[#748699]'}`}
-            >
-              {theme === 'light' ? (
-                <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="none" stroke="currentColor" strokeWidth="1.9">
-                  <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="none" stroke="currentColor" strokeWidth="1.9">
-                  <circle cx="12" cy="12" r="4" />
-                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-                </svg>
-              )}
-            </button>
-            <div className="relative" ref={langMenuRef}>
+    <div className={`min-h-screen ${isDark ? 'bg-[#0f1724] text-[#e7edf6]' : 'bg-[#f6f7f9] text-[#132738]'}`}>
+      <main className={`min-h-screen grid place-items-center px-4 md:px-6 py-8 ${isDark ? 'bg-gradient-to-r from-[#101b2a] via-[#0f1724] to-[#101b2a]' : 'bg-gradient-to-r from-[#f4f5f7] via-[#f6f7f9] to-[#f4f5f7]'}`}>
+        <section className="w-full max-w-[610px] grid gap-3">
+          <div className={`w-full max-w-[460px] justify-self-center rounded-[14px] border px-4 py-3 flex items-center justify-between ${isDark ? 'bg-[#172334] border-[#2a3b52]' : 'bg-[#f0f1f3] border-[#d9e1e9]'}`}>
+            <img src={cmcLogo} alt="CMC SportBooking" className="h-10 w-auto object-contain" />
+
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                title={langLabel}
-                aria-label={t('language')}
-                onClick={() => setLangOpen((v) => !v)}
-                className={`w-10 h-10 rounded-full border grid place-items-center transition-colors ${isDark ? 'border-[#35506d] bg-[#1b2b40] text-[#d1deeb]' : 'border-[#e3e9f0] bg-[#f7f9fc] text-[#748699]'}`}
+                title={theme === 'light' ? t('darkMode') : t('lightMode')}
+                aria-label={theme === 'light' ? t('darkMode') : t('lightMode')}
+                onClick={() => dispatch(setTheme(theme === 'light' ? 'dark' : 'light'))}
+                className={`w-10 h-10 shrink-0 p-0 rounded-full border grid place-items-center transition-all duration-200 ${isDark ? 'border-[#35506d] bg-[#1a2c43] text-[#d7e5f2] hover:bg-[#223650]' : 'border-[#d9e3ec] bg-[#f7f9fc] text-[#6f8193] hover:bg-white'}`}
               >
-                <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="none" stroke="currentColor" strokeWidth="1.9">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" />
-                </svg>
+                {theme === 'light' ? (
+                  <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <circle cx="12" cy="12" r="4" />
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                  </svg>
+                )}
               </button>
-              {langOpen ? (
-                <div className={`absolute right-0 mt-2 w-36 rounded-[10px] border p-1 z-20 ${isDark ? 'bg-[#1b2b40] border-[#35506d]' : 'bg-white border-[#d4dce5]'}`}>
-                  <button
-                    type="button"
-                    onClick={() => onLanguageChange('fr')}
-                    className={`w-full text-left px-3 py-2 rounded-[8px] text-sm ${language === 'fr' ? 'bg-[#7eb6de] text-[#122b3d] font-bold' : isDark ? 'text-[#dce8f4]' : 'text-[#3f556b]'}`}
-                  >
-                    Francais
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onLanguageChange('en')}
-                    className={`w-full text-left px-3 py-2 rounded-[8px] text-sm ${language === 'en' ? 'bg-[#7eb6de] text-[#122b3d] font-bold' : isDark ? 'text-[#dce8f4]' : 'text-[#3f556b]'}`}
-                  >
-                    English
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onLanguageChange('ar')}
-                    className={`w-full text-left px-3 py-2 rounded-[8px] text-sm ${language === 'ar' ? 'bg-[#7eb6de] text-[#122b3d] font-bold' : isDark ? 'text-[#dce8f4]' : 'text-[#3f556b]'}`}
-                  >
-                    Arabic
-                  </button>
-                </div>
-              ) : null}
+              <div className="relative" ref={langMenuRef}>
+                <button
+                  type="button"
+                  title={langLabel}
+                  aria-label={t('language')}
+                  onClick={() => setLangOpen((v) => !v)}
+                  className={`w-10 h-10 shrink-0 p-0 rounded-full border grid place-items-center transition-all duration-200 ${isDark ? 'border-[#35506d] bg-[#1a2c43] text-[#d7e5f2] hover:bg-[#223650]' : 'border-[#d9e3ec] bg-[#f7f9fc] text-[#6f8193] hover:bg-white'}`}
+                >
+                  <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" />
+                  </svg>
+                </button>
+                {langOpen ? (
+                  <div className={`absolute right-0 mt-2 w-36 rounded-[10px] border p-1 z-20 ${isDark ? 'bg-[#1b2b40] border-[#35506d]' : 'bg-white border-[#d4dce5]'}`}>
+                    <button
+                      type="button"
+                      onClick={() => onLanguageChange('fr')}
+                      className={`w-full text-left px-3 py-2 rounded-[8px] text-sm ${language === 'fr' ? 'bg-[#7eb6de] text-[#122b3d] font-bold' : isDark ? 'text-[#dce8f4]' : 'text-[#3f556b]'}`}
+                    >
+                      Francais
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onLanguageChange('en')}
+                      className={`w-full text-left px-3 py-2 rounded-[8px] text-sm ${language === 'en' ? 'bg-[#7eb6de] text-[#122b3d] font-bold' : isDark ? 'text-[#dce8f4]' : 'text-[#3f556b]'}`}
+                    >
+                      English
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onLanguageChange('ar')}
+                      className={`w-full text-left px-3 py-2 rounded-[8px] text-sm ${language === 'ar' ? 'bg-[#7eb6de] text-[#122b3d] font-bold' : isDark ? 'text-[#dce8f4]' : 'text-[#3f556b]'}`}
+                    >
+                      Arabic
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
-        </div>
-      </header>
 
-      <main className={`flex-1 grid place-items-center px-4 md:px-8 py-8 md:py-6 border-y ${isDark ? 'border-[#25354a] bg-gradient-to-r from-[#101b2a] via-[#0f1724] to-[#101b2a]' : 'border-[#e7ebf0] bg-gradient-to-r from-[#f4f5f7] via-[#f6f7f9] to-[#f4f5f7]'}`}>
         <form
           onSubmit={submit}
-          className={`w-full max-w-[600px] rounded-[10px] p-7 grid gap-3 border shadow-[0_28px_65px_-42px_#000] ${isDark ? 'bg-[#19283a] border-[#2d425b]' : 'bg-[#f2f3f5]/95 border-[#e1e7ee]'}`}
+          className={`w-full max-w-[460px] justify-self-center rounded-[10px] p-5 grid gap-2.5 border shadow-[0_24px_56px_-40px_#000] ${isDark ? 'bg-[#19283a] border-[#2d425b]' : 'bg-[#f2f3f5]/95 border-[#e1e7ee]'}`}
         >
-          <h1 className={`m-0 text-center text-[50px] leading-[1.04] font-['Sora'] font-extrabold ${isDark ? 'text-[#ecf3ff]' : 'text-[#132738]'}`}>{t('welcomeBack')}</h1>
+          <h1 className={`m-0 text-center text-[38px] leading-[1.04] font-['Sora'] font-extrabold ${isDark ? 'text-[#ecf3ff]' : 'text-[#132738]'}`}>{t('welcomeBack')}</h1>
           <p className={`m-0 mx-auto text-center text-[16px] leading-[1.45] max-w-[290px] ${isDark ? 'text-[#9db2c8]' : 'text-[#6e7f91]'}`}>{t('accessReservation')}</p>
 
           {!forcedPortal ? (
@@ -167,7 +171,7 @@ export default function LoginPage({ forcedPortal = null }) {
             </div>
           ) : (
             <div className={`mt-2 rounded-[8px] border px-3 py-[10px] text-center text-sm font-['Sora'] font-bold ${isDark ? 'bg-[#1f3046] border-[#36506f] text-[#dce9f7]' : 'bg-[#e7edf3] border-[#d4dee8] text-[#1d3348]'}`}>
-              {forcedPortal === 'admin' ? t('adminLogin') : t('studentLogin')}
+              {forcedPortal === 'admin' ? t('adminLogin') : forcedPortal === 'monitor' ? t('monitorLogin') : t('studentLogin')}
             </div>
           )}
 
@@ -189,7 +193,7 @@ export default function LoginPage({ forcedPortal = null }) {
               className={`w-full border rounded-[8px] pl-10 pr-[122px] py-2.5 text-[15px] outline-none ${isDark ? 'border-[#35506d] bg-[#142235] text-[#e5effa] focus:border-[#79b9de]' : 'border-[#d5dce5] bg-[#f0f2f5] text-[#22384d] focus:border-[#96b7d3]'}`}
             />
             <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[12px] border rounded-[6px] px-2 py-1 font-semibold ${isDark ? 'text-[#a8bdd1] bg-[#21354b] border-[#35506d]' : 'text-[#8899ab] bg-[#e2e7ed] border-[#d1d8e0]'}`}>
-              @ofppt-edu.ma
+              @gmail.com
             </span>
           </div>
           <small className={`text-[12px] leading-[1.4] ${isDark ? 'text-[#8aa2bb]' : 'text-[#8fa1b2]'}`}>{t('domainHint')}</small>
@@ -260,18 +264,8 @@ export default function LoginPage({ forcedPortal = null }) {
             <span className="text-[#57a7db] font-bold">{firstVisitCta}</span>
           </p>
         </form>
+        </section>
       </main>
-
-      <footer className={`h-[62px] px-4 md:px-8 border-t ${isDark ? 'bg-[#172334] border-[#25354a]' : 'bg-[#f3f4f6] border-[#e2e9f0]'}`}>
-        <div className={`w-full max-w-[1320px] h-full mx-auto flex items-center justify-between text-[13px] max-md:h-auto max-md:py-3 max-md:flex-col max-md:gap-2 ${isDark ? 'text-[#8ea6bf]' : 'text-[#8a9bab]'}`}>
-          <span>{t('copyright')}</span>
-          <div className="flex gap-5">
-            <a href="#" className={`${isDark ? 'text-[#a6bfd6]' : 'text-[#647a8f]'} no-underline`}>{t('privacy')}</a>
-            <a href="#" className={`${isDark ? 'text-[#a6bfd6]' : 'text-[#647a8f]'} no-underline`}>{t('terms')}</a>
-            <a href="#" className={`${isDark ? 'text-[#a6bfd6]' : 'text-[#647a8f]'} no-underline`}>{t('itSupport')}</a>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

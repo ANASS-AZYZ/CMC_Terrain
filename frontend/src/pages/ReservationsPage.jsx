@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/client'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
-import { addReservationPlayer, deleteReservation, fetchReservations } from '../features/reservations/reservationsSlice'
+import { addReservationPlayer, deleteReservation, fetchReservations, updateReservationStatus } from '../features/reservations/reservationsSlice'
 
 export default function ReservationsPage() {
   const { t } = useTranslation()
@@ -20,8 +20,18 @@ export default function ReservationsPage() {
   const [playersList, setPlayersList] = useState([])
   const [playersLoading, setPlayersLoading] = useState(false)
   const [playersError, setPlayersError] = useState('')
+  const [reservationLookupId, setReservationLookupId] = useState('')
+  const [lookupResult, setLookupResult] = useState(null)
+  const [statusReservationId, setStatusReservationId] = useState('')
+  const [statusSelection, setStatusSelection] = useState('completed')
+  const [statusFormError, setStatusFormError] = useState('')
+  const [statusFormLoading, setStatusFormLoading] = useState(false)
+  const [editingStatusId, setEditingStatusId] = useState(null)
+  const [editingStatusValue, setEditingStatusValue] = useState('completed')
+  const [rowStatusLoadingId, setRowStatusLoadingId] = useState(null)
 
   const addPath = user?.role === 'stagiaire' ? '/stagiaire/home' : '/admin/reservations/new'
+  const isMonitor = user?.role === 'monitor'
 
   useEffect(() => {
     dispatch(fetchReservations())
@@ -63,6 +73,183 @@ export default function ReservationsPage() {
     return t('statusPending')
   }
 
+  const completedReservations = useMemo(
+    () => rows.filter((reservation) => reservation.status === 'completed'),
+    [rows],
+  )
+
+  const cancelledReservations = useMemo(
+    () => rows.filter((reservation) => reservation.status === 'cancelled'),
+    [rows],
+  )
+
+  const runReservationLookup = () => {
+    const rawValue = reservationLookupId.trim()
+
+    if (!rawValue) {
+      setLookupResult(null)
+      return
+    }
+
+    const foundReservation = rows.find((reservation) => String(reservation.code) === rawValue || String(reservation.id) === rawValue)
+    setLookupResult({ found: Boolean(foundReservation), reservation: foundReservation || null })
+  }
+
+  const statusManagedRows = useMemo(
+    () => rows.filter((reservation) => reservation.status === 'completed' || reservation.status === 'cancelled'),
+    [rows],
+  )
+
+  const submitStatusFromForm = async () => {
+    const rawValue = statusReservationId.trim()
+
+    setStatusFormError('')
+
+    if (!rawValue) {
+      setStatusFormError(t('reservationIdInvalid'))
+      return
+    }
+
+    const found = rows.find((reservation) => String(reservation.code) === rawValue || String(reservation.id) === rawValue)
+    if (!found) {
+      setStatusFormError(t('reservationNotFoundById'))
+      return
+    }
+
+    setStatusFormLoading(true)
+    const result = await dispatch(updateReservationStatus({ id: found.id, status: statusSelection }))
+    setStatusFormLoading(false)
+
+    if (updateReservationStatus.rejected.match(result)) {
+      setStatusFormError(result.error?.message || t('statusChangeFailed'))
+      return
+    }
+
+    setStatusFormError('')
+    setStatusReservationId('')
+    await dispatch(fetchReservations())
+  }
+
+  const submitStatusFromRow = async (reservationId) => {
+    setRowStatusLoadingId(reservationId)
+    const result = await dispatch(updateReservationStatus({ id: reservationId, status: editingStatusValue }))
+    setRowStatusLoadingId(null)
+
+    if (updateReservationStatus.rejected.match(result)) {
+      return
+    }
+
+    setEditingStatusId(null)
+    await dispatch(fetchReservations())
+  }
+
+  if (isMonitor) {
+    return (
+      <section className="reservations-management">
+        <div className="reservation-head">
+          <h2>{t('manageReservations')}</h2>
+        </div>
+
+        <article className="reservation-audit-card">
+          <div className="reservation-panel-head">
+            <h3>{t('reservationStatusFormTitle')}</h3>
+          </div>
+
+          <div className="reservation-checker-row">
+            <input
+              type="text"
+              value={statusReservationId}
+              onChange={(e) => setStatusReservationId(e.target.value)}
+              placeholder={t('reservationIdPlaceholder')}
+              className="reservation-checker-input"
+            />
+
+            <select
+              value={statusSelection}
+              onChange={(e) => setStatusSelection(e.target.value)}
+              className="reservation-checker-input"
+            >
+              <option value="completed">{t('statusCompleted')}</option>
+              <option value="cancelled">{t('statusCancelled')}</option>
+            </select>
+
+            <button
+              type="button"
+              className="reservation-add-btn"
+              onClick={submitStatusFromForm}
+              disabled={statusFormLoading}
+            >
+              {statusFormLoading ? t('saving') : t('confirmStatusChange')}
+            </button>
+          </div>
+
+          {statusFormError ? <p className="reservation-slot-hint">{statusFormError}</p> : null}
+        </article>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>{t('reservationNumber')}</th>
+                <th>{t('status')}</th>
+                <th>{t('actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {statusManagedRows.length === 0 ? (
+                <tr>
+                  <td colSpan={3}>{t('noData')}</td>
+                </tr>
+              ) : (
+                statusManagedRows.map((reservation) => (
+                  <tr key={reservation.id}>
+                    <td>{reservation.code || reservation.id}</td>
+                    <td>
+                      <span className={getStatusBadgeClass(reservation.status)}>{getStatusLabel(reservation.status)}</span>
+                    </td>
+                    <td>
+                      {editingStatusId === reservation.id ? (
+                        <div className="reservation-actions-cell">
+                          <select
+                            value={editingStatusValue}
+                            onChange={(e) => setEditingStatusValue(e.target.value)}
+                            className="reservation-action-btn"
+                          >
+                            <option value="completed">{t('statusCompleted')}</option>
+                            <option value="cancelled">{t('statusCancelled')}</option>
+                          </select>
+                          <button
+                            type="button"
+                            className="reservation-action-btn"
+                            disabled={rowStatusLoadingId === reservation.id}
+                            onClick={() => submitStatusFromRow(reservation.id)}
+                          >
+                            {rowStatusLoadingId === reservation.id ? t('saving') : t('validateStatusChange')}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="reservation-action-btn"
+                          onClick={() => {
+                            setEditingStatusId(reservation.id)
+                            setEditingStatusValue(reservation.status === 'cancelled' ? 'cancelled' : 'completed')
+                          }}
+                        >
+                          {t('modifyStatus')}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )
+  }
+
   const loadPlayersByCode = async (reservation) => {
     if (!reservation?.code || reservation.code === '-------') {
       setPlayersList([])
@@ -92,6 +279,66 @@ export default function ReservationsPage() {
           {t('addReservation')}
         </button>
       </div>
+
+      {user?.role === 'admin' ? (
+        <article className="reservation-audit-card">
+          <div className="reservation-panel-head">
+            <h3>{t('reservationCheckerTitle')}</h3>
+          </div>
+
+          <p className="reservation-checker-hint">{t('reservationCheckerHint')}</p>
+
+          <div className="reservation-checker-row">
+            <input
+              type="text"
+              value={reservationLookupId}
+              onChange={(e) => setReservationLookupId(e.target.value)}
+              placeholder={t('reservationIdPlaceholder')}
+              className="reservation-checker-input"
+            />
+            <button type="button" className="reservation-add-btn" onClick={runReservationLookup}>
+              {t('checkReservation')}
+            </button>
+          </div>
+
+          {lookupResult ? (
+            <div className={`reservation-check-result ${lookupResult.found ? 'found' : 'missing'}`}>
+              {lookupResult.found ? t('reservationFound') : t('reservationNotFound')}
+              {lookupResult.found && lookupResult.reservation ? (
+                <span>
+                  {` ID #${lookupResult.reservation.id} - ${lookupResult.reservation.terrainLabel} - ${getStatusLabel(lookupResult.reservation.status)}`}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="reservation-status-lists">
+            <div className="reservation-status-list-card">
+              <h4>{t('completedReservationsList')}</h4>
+              <ul>
+                {completedReservations.length === 0 ? <li>{t('noCompletedReservations')}</li> : null}
+                {completedReservations.map((reservation) => (
+                  <li key={`completed-${reservation.id}`}>
+                    {`ID #${reservation.id} - ${reservation.dateLabel}`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="reservation-status-list-card">
+              <h4>{t('cancelledReservationsList')}</h4>
+              <ul>
+                {cancelledReservations.length === 0 ? <li>{t('noCancelledReservations')}</li> : null}
+                {cancelledReservations.map((reservation) => (
+                  <li key={`cancelled-${reservation.id}`}>
+                    {`ID #${reservation.id} - ${reservation.dateLabel}`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </article>
+      ) : null}
 
       <div className="table-wrap">
         <table>

@@ -6,7 +6,7 @@ export default function ForgotPasswordPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const portal = searchParams.get('portal') === 'admin' ? 'admin' : 'stagiaire'
-  const backLoginPath = portal === 'admin' ? '/login_admin' : '/login_stagiare'
+  const backLoginPath = portal === 'admin' ? '/login_admin' : '/login_stagiaire'
 
   const [step, setStep] = useState(1)
   const [email, setEmail] = useState('')

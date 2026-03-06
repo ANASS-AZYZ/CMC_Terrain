@@ -325,6 +325,41 @@ class ReservationController extends Controller
         return response()->json($reservation->load(['terrain', 'match', 'creator']));
     }
 
+    public function updateStatus(Request $request, Reservation $reservation): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || ! in_array((string) $user->role, ['admin', 'monitor'], true)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $data = $request->validate([
+            'status' => ['required', 'in:completed,cancelled'],
+        ]);
+
+        $mainReservationId = (int) ($reservation->parent_reservation_id ?: $reservation->id);
+
+        $mainReservation = Reservation::query()
+            ->whereKey($mainReservationId)
+            ->whereNull('parent_reservation_id')
+            ->first();
+
+        if (! $mainReservation) {
+            return response()->json(['message' => 'Reservation not found'], 404);
+        }
+
+        $mainReservation->update([
+            'status' => $data['status'],
+        ]);
+
+        // Keep associated players in sync with the same match status outcome.
+        Reservation::query()
+            ->where('parent_reservation_id', $mainReservation->id)
+            ->update(['status' => $data['status']]);
+
+        return response()->json($mainReservation->load(['terrain', 'match', 'creator']));
+    }
+
     private function generateReservationCode(): string
     {
         do {

@@ -8,6 +8,7 @@ import { meThunk } from './features/auth/authSlice'
 import DashboardPage from './pages/DashboardPage'
 import LoginPage from './pages/LoginPage'
 import MatchesPage from './pages/MatchesPage'
+import MonitorsPage from './pages/MonitorsPage'
 import AdminProfilePage from './pages/AdminProfilePage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import RegisterPage from './pages/RegisterPage'
@@ -44,10 +45,11 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/login" element={<Navigate to="/login_stagiare" replace />} />
-      <Route path="/login_stagiare" element={<LoginPage forcedPortal="stagiaire" />} />
+      <Route path="/login" element={<Navigate to="/login_stagiaire" replace />} />
+      <Route path="/login_stagiare" element={<Navigate to="/login_stagiaire" replace />} />
       <Route path="/login_stagiaire" element={<LoginPage forcedPortal="stagiaire" />} />
       <Route path="/login_admin" element={<LoginPage forcedPortal="admin" />} />
+      <Route path="/login_monitor" element={<LoginPage forcedPortal="monitor" />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
@@ -131,6 +133,14 @@ export default function App() {
           }
         />
         <Route
+          path="/admin/monitors"
+          element={
+            <ProtectedRoute role="admin">
+              <MonitorsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/admin/profile"
           element={
             <ProtectedRoute role="admin">
@@ -184,6 +194,22 @@ export default function App() {
           element={
             <ProtectedRoute role="stagiaire">
               <ReservationFormPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/monitor/reservations"
+          element={
+            <ProtectedRoute role="monitor">
+              <ReservationsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/monitor/profile"
+          element={
+            <ProtectedRoute role="monitor">
+              <AdminProfilePage />
             </ProtectedRoute>
           }
         />

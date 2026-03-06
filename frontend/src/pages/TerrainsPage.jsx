@@ -40,7 +40,12 @@ export default function TerrainsPage() {
 
   const normalizedTerrains = terrains.map((terrain) => ({
     ...terrain,
-    terrainType: String(terrain.type || '').toLowerCase(),
+    terrainType:
+      String(terrain.type || '').toLowerCase() === 'basket'
+        ? 'basketball'
+        : String(terrain.type || '').toLowerCase() === 'gazon'
+          ? 'football 11'
+          : String(terrain.type || '').toLowerCase(),
     terrainName: String(terrain.name || '').toLowerCase(),
     statusNormalized: terrain.status === 'maintenance' ? 'inactive' : terrain.status,
   }))
@@ -65,7 +70,7 @@ export default function TerrainsPage() {
     return `${minPlayers}-${maxPlayers} Players`
   }
 
-  const typeChoices = ['all', 'gazon', 'futsal', 'volley', 'basket']
+  const typeChoices = ['all', 'football 11', 'volley', 'futsal', 'basketball']
 
   return (
     <section className="terrain-management">
@@ -88,7 +93,7 @@ export default function TerrainsPage() {
         <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
           {typeChoices.map((type) => (
             <option key={type} value={type}>
-              {type === 'all' ? 'All Types' : type.charAt(0).toUpperCase() + type.slice(1)}
+              {type === 'all' ? 'All Types' : type === 'basketball' ? 'Basketball' : type === 'football 11' ? 'Football 11' : type.charAt(0).toUpperCase() + type.slice(1)}
             </option>
           ))}
         </select>

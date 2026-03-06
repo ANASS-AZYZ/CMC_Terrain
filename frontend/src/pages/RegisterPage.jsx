@@ -4,6 +4,7 @@ import api from '../api/client'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
+  const [step, setStep] = useState(1)
 
   const [form, setForm] = useState({
     first_name: '',
@@ -19,6 +20,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [verificationEmail, setVerificationEmail] = useState('')
+  const [verificationCode, setVerificationCode] = useState('')
 
   const updateField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -42,8 +45,9 @@ export default function RegisterPage() {
         email: form.email.trim(),
       })
 
-      setSuccess('Compte cree avec succes. Redirection vers la connexion...')
-      setTimeout(() => navigate('/login'), 1200)
+      setVerificationEmail(form.email.trim().toLowerCase())
+      setSuccess('Compte cree. Un code de verification a ete envoye vers votre Gmail.')
+      setStep(2)
     } catch (err) {
       const apiMessage = err?.response?.data?.message
       const validationErrors = err?.response?.data?.errors
@@ -60,12 +64,53 @@ export default function RegisterPage() {
     }
   }
 
+  const verifyEmail = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      await api.post('/email/verify-code', {
+        email: verificationEmail,
+        code: verificationCode.trim(),
+      })
+
+      setSuccess('Email verifie avec succes. Redirection vers login...')
+      setTimeout(() => navigate('/login'), 1200)
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Verification echouee. Verifiez le code.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const resendVerificationCode = async () => {
+    setLoading(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      await api.post('/email/resend-verification', { email: verificationEmail })
+      setSuccess('Nouveau code envoye vers votre Gmail.')
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Impossible de renvoyer le code.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#e9f4ff_0%,_#f6f8fb_45%,_#eef2f7_100%)] text-[#132738] grid place-items-center px-4 py-8">
       <div className="w-full max-w-[760px] rounded-[20px] border border-[#d8e4f1] bg-white/90 shadow-[0_24px_70px_rgba(15,39,65,0.12)] p-8 md:p-10 grid gap-5">
         <h1 className="m-0 text-center text-[34px] md:text-[42px] leading-[1.05] font-['Sora'] font-extrabold text-[#132738]">Creer Votre Compte</h1>
-        <p className="m-0 text-center text-[16px] text-[#5b7590]">Remplissez toutes vos informations pour creer votre compte stagiaire.</p>
+        <p className="m-0 text-center text-[16px] text-[#5b7590]">
+          {step === 1
+            ? 'Remplissez toutes vos informations pour creer votre compte stagiaire.'
+            : `Saisissez le code envoye a ${verificationEmail} pour verifier votre Gmail.`}
+        </p>
 
+        {step === 1 ? (
         <form className="grid gap-4 md:grid-cols-2" onSubmit={submit}>
           <label className="font-bold text-sm text-[#27384a]">
             Prenom
@@ -98,6 +143,7 @@ export default function RegisterPage() {
               required
               className="mt-2 w-full border border-[#c9d8e7] rounded-[12px] px-4 py-3 bg-[#f9fcff] text-[#22384d] outline-none focus:border-[#5aa5d7] focus:ring-2 focus:ring-[#5aa5d733]"
             />
+            <p className="m-0 mt-1 text-[12px] font-semibold text-[#5b7590]">Format requis: example@gmail.com</p>
           </label>
 
           <label className="font-bold text-sm text-[#27384a]">
@@ -175,6 +221,39 @@ export default function RegisterPage() {
             </button>
           </div>
         </form>
+        ) : (
+        <form className="grid gap-4" onSubmit={verifyEmail}>
+          <label className="font-bold text-sm text-[#27384a]">
+            Code de verification
+            <input
+              type="text"
+              value={verificationCode}
+              onChange={(e) => setVerificationCode(e.target.value)}
+              minLength={6}
+              maxLength={6}
+              required
+              className="mt-2 w-full border border-[#c9d8e7] rounded-[12px] px-4 py-3 bg-[#f9fcff] text-[#22384d] tracking-[0.2em] text-center text-[20px] outline-none focus:border-[#5aa5d7] focus:ring-2 focus:ring-[#5aa5d733]"
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-[#5aa5d7] hover:bg-[#4d99cc] transition-colors text-white rounded-[12px] py-[12px] font-['Sora'] font-bold shadow-[0_10px_24px_rgba(59,140,197,0.28)] disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Verification...' : 'Verifier Mon Gmail'}
+          </button>
+
+          <button
+            type="button"
+            onClick={resendVerificationCode}
+            disabled={loading}
+            className="bg-transparent border border-[#c9d8e7] rounded-[12px] py-[11px] font-semibold text-[#4c6e8c] disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            Renvoyer le code
+          </button>
+        </form>
+        )}
 
         {error ? <p className="m-0 rounded-[10px] border border-[#f1c1cc] bg-[#fff4f7] px-3 py-2 text-[#b72a4e] font-semibold text-sm">{error}</p> : null}
         {success ? <p className="m-0 rounded-[10px] border border-[#bee8cf] bg-[#f1fff6] px-3 py-2 text-[#1f8f58] font-semibold text-sm">{success}</p> : null}

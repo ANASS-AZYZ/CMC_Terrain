@@ -7,7 +7,7 @@ import { createTerrain, fetchTerrains, updateTerrain } from '../features/terrain
 const initialForm = {
   name: '',
   image_url: '',
-  type: 'Gazon',
+  type: 'Football 11',
   location: 'CMC Campus',
   capacity: 10,
   status: 'active',
@@ -25,6 +25,17 @@ export default function TerrainFormPage() {
   const [form, setForm] = useState(initialForm)
   const [imageFile, setImageFile] = useState(null)
 
+  const normalizeTerrainType = (value) => {
+    const normalized = String(value || '').trim().toLowerCase()
+    if (normalized === 'gazon') return 'Football 11'
+    if (normalized === 'football 11') return 'Football 11'
+    if (normalized === 'basket') return 'Basketball'
+    if (normalized === 'basketball') return 'Basketball'
+    if (normalized === 'volley') return 'Volley'
+    if (normalized === 'futsal') return 'Futsal'
+    return 'Football 11'
+  }
+
   const currentTerrain = useMemo(
     () => terrains.find((terrain) => terrain.id === Number(terrainId)),
     [terrains, terrainId],
@@ -40,7 +51,7 @@ export default function TerrainFormPage() {
     setForm({
       name: currentTerrain.name ?? '',
       image_url: currentTerrain.image_url ?? '',
-      type: currentTerrain.type ?? 'Gazon',
+      type: normalizeTerrainType(currentTerrain.type),
       location: currentTerrain.location ?? 'CMC Campus',
       capacity: Number(currentTerrain.capacity ?? 10),
       status: currentTerrain.status === 'maintenance' ? 'inactive' : currentTerrain.status ?? 'active',
@@ -106,10 +117,10 @@ export default function TerrainFormPage() {
         <label>
           {t('terrainType')}
           <select value={form.type} onChange={(e) => onChange('type', e.target.value)}>
-            <option value="Gazon">Gazon</option>
-            <option value="Futsal">Futsal</option>
+            <option value="Football 11">Football 11</option>
             <option value="Volley">Volley</option>
-            <option value="Basket">Basket</option>
+            <option value="Futsal">Futsal</option>
+            <option value="Basketball">Basketball</option>
           </select>
         </label>
 

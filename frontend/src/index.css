@@ -1494,6 +1494,100 @@ td {
   font-weight: 700;
 }
 
+.reservation-audit-card {
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  background: #fbfdff;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.reservation-checker-hint {
+  margin: 0;
+  color: #5f748a;
+  font-size: 13px;
+}
+
+.reservation-checker-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.reservation-checker-input {
+  flex: 1;
+  min-width: 220px;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: #f3f7fc;
+  color: #1f3449;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.reservation-check-result {
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.reservation-check-result.found {
+  background: #e2f8ea;
+  border: 1px solid #9fd8af;
+  color: #215a33;
+}
+
+.reservation-check-result.missing {
+  background: #fde7e7;
+  border: 1px solid #e2b0b0;
+  color: #7f2d2d;
+}
+
+.reservation-check-result span {
+  font-weight: 600;
+}
+
+.reservation-status-lists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.reservation-status-list-card {
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: #f6f9fc;
+  padding: 10px;
+}
+
+.reservation-status-list-card h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #1f354b;
+}
+
+.reservation-status-list-card ul {
+  margin: 0;
+  padding-inline-start: 18px;
+  display: grid;
+  gap: 6px;
+}
+
+.reservation-status-list-card li {
+  color: #415a71;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .reservation-status-lists {
+    grid-template-columns: 1fr;
+  }
+}
+
 .reservation-actions-cell {
   display: flex;
   gap: 8px;
@@ -3061,6 +3155,34 @@ td {
   background: #4b97c6;
   border-color: #4b97c6;
   color: #f4f8ff;
+}
+
+:root[data-theme='dark'] .reservation-audit-card {
+  background: #13253a;
+  border-color: #2a425e;
+}
+
+:root[data-theme='dark'] .reservation-checker-hint {
+  color: #b3c8de;
+}
+
+:root[data-theme='dark'] .reservation-checker-input {
+  background: #0f2235;
+  border-color: #35516e;
+  color: #f4f8ff;
+}
+
+:root[data-theme='dark'] .reservation-status-list-card {
+  background: #0f2235;
+  border-color: #35516e;
+}
+
+:root[data-theme='dark'] .reservation-status-list-card h4 {
+  color: #dce9f7;
+}
+
+:root[data-theme='dark'] .reservation-status-list-card li {
+  color: #b5c9df;
 }
 
 :root[data-theme='dark'] .reservation-action-btn {

@@ -12,8 +12,8 @@ export const loginThunk = createAsyncThunk('auth/login', async (payload, { rejec
   try {
     const { data } = await api.post('/login', payload)
     return data
-  } catch {
-    return rejectWithValue('Login failed. Check credentials and portal.')
+  } catch (err) {
+    return rejectWithValue(err?.response?.data?.message || 'Login failed. Check credentials and portal.')
   }
 })
 

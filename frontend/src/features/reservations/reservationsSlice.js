@@ -26,6 +26,11 @@ export const deleteReservation = createAsyncThunk('reservations/delete', async (
   return id
 })
 
+export const updateReservationStatus = createAsyncThunk('reservations/updateStatus', async ({ id, status }) => {
+  const { data } = await api.patch(`/reservations/${id}/status`, { status })
+  return data
+})
+
 export const addReservationPlayer = createAsyncThunk('reservations/addPlayer', async ({ reservationId, studentId }) => {
   try {
     const { data } = await api.post(`/reservations/${reservationId}/players`, {
@@ -56,6 +61,9 @@ const reservationsSlice = createSlice({
         state.items.unshift(action.payload)
       })
       .addCase(updateReservation.fulfilled, (state, action) => {
+        state.items = state.items.map((reservation) => (reservation.id === action.payload.id ? action.payload : reservation))
+      })
+      .addCase(updateReservationStatus.fulfilled, (state, action) => {
         state.items = state.items.map((reservation) => (reservation.id === action.payload.id ? action.payload : reservation))
       })
       .addCase(deleteReservation.fulfilled, (state, action) => {

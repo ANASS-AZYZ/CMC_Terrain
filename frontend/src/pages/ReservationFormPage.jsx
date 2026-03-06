@@ -55,6 +55,15 @@ export default function ReservationFormPage() {
   const [slotDuration, setSlotDuration] = useState(2)
   const [joinReservationCode, setJoinReservationCode] = useState('')
 
+  const formatTerrainTypeLabel = (type) => {
+    const normalized = String(type || '').trim().toLowerCase()
+    if (normalized === 'gazon' || normalized === 'football 11') return 'Football 11'
+    if (normalized === 'basket' || normalized === 'basketball') return 'Basketball'
+    if (normalized === 'volley') return 'Volley'
+    if (normalized === 'futsal') return 'Futsal'
+    return 'Football 11'
+  }
+
   useEffect(() => {
     dispatch(fetchTerrains())
     dispatch(fetchReservations())
@@ -347,7 +356,7 @@ export default function ReservationFormPage() {
           <select value={selectedTerrainType} onChange={(e) => setSelectedTerrainType(e.target.value)} required>
             {terrainTypes.map((type) => (
               <option key={type} value={type}>
-                {type}
+                {formatTerrainTypeLabel(type)}
               </option>
             ))}
           </select>
