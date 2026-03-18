@@ -11,6 +11,7 @@ export default function TerrainsPage() {
   const terrains = useAppSelector((state) => state.terrains.items)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
+  const [imageIndexByTerrain, setImageIndexByTerrain] = useState({})
 
   useEffect(() => {
     dispatch(fetchTerrains())
@@ -25,7 +26,7 @@ export default function TerrainsPage() {
   }
 
   const onToggleOnlineBooking = async (terrain) => {
-    const nextOnlineBooking = !Boolean(terrain.online_booking)
+    const nextOnlineBooking = !terrain.online_booking
 
     await dispatch(
       updateTerrain({
@@ -72,6 +73,33 @@ export default function TerrainsPage() {
 
   const typeChoices = ['all', 'football 11', 'volley', 'futsal', 'basketball']
 
+  const getTerrainImages = (terrain) => {
+    const gallery = Array.isArray(terrain.image_urls) ? terrain.image_urls : []
+    const merged = [...gallery]
+
+    if (terrain.image_url) {
+      merged.unshift(terrain.image_url)
+    }
+
+    return Array.from(new Set(merged.filter(Boolean)))
+  }
+
+  const goToPrevImage = (terrainId, imagesLength) => {
+    setImageIndexByTerrain((prev) => {
+      const current = prev[terrainId] ?? 0
+      const next = (current - 1 + imagesLength) % imagesLength
+      return { ...prev, [terrainId]: next }
+    })
+  }
+
+  const goToNextImage = (terrainId, imagesLength) => {
+    setImageIndexByTerrain((prev) => {
+      const current = prev[terrainId] ?? 0
+      const next = (current + 1) % imagesLength
+      return { ...prev, [terrainId]: next }
+    })
+  }
+
   return (
     <section className="terrain-management">
       <div className="terrain-page-head">
@@ -107,7 +135,39 @@ export default function TerrainsPage() {
       <div className="terrain-cards-grid">
         {filteredTerrains.map((terrain) => (
           <article key={terrain.id} className="terrain-card">
-            {terrain.image_url ? <img src={terrain.image_url} alt={terrain.name} className="terrain-card-image" /> : null}
+            {(() => {
+              const images = getTerrainImages(terrain)
+              const currentIndex = images.length > 0 ? (imageIndexByTerrain[terrain.id] ?? 0) % images.length : 0
+
+              return images.length > 0 ? (
+                <div className="terrain-card-image-wrap">
+                  <img src={images[currentIndex]} alt={terrain.name} className="terrain-card-image" />
+                  {images.length > 1 ? (
+                    <>
+                      <button
+                        type="button"
+                        className="terrain-image-nav prev"
+                        onClick={() => goToPrevImage(terrain.id, images.length)}
+                        aria-label="Previous image"
+                      >
+                        {'<'}
+                      </button>
+                      <button
+                        type="button"
+                        className="terrain-image-nav next"
+                        onClick={() => goToNextImage(terrain.id, images.length)}
+                        aria-label="Next image"
+                      >
+                        {'>'}
+                      </button>
+                      <span className="terrain-image-counter">{currentIndex + 1}/{images.length}</span>
+                    </>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="terrain-card-image terrain-card-image-empty">No image</div>
+              )
+            })()}
 
             <div className="terrain-card-top">
               <h3>{terrain.name}</h3>
@@ -126,11 +186,11 @@ export default function TerrainsPage() {
               <span>Online Booking</span>
               <button
                 type="button"
-                className={Boolean(terrain.online_booking) ? 'booking-switch on' : 'booking-switch off'}
+                className={terrain.online_booking ? 'booking-switch on' : 'booking-switch off'}
                 onClick={() => onToggleOnlineBooking(terrain)}
                 title="Toggle online booking"
               >
-                <span className="booking-knob">{Boolean(terrain.online_booking) ? '✓' : ''}</span>
+                <span className="booking-knob">{terrain.online_booking ? '✓' : ''}</span>
               </button>
             </div>
 

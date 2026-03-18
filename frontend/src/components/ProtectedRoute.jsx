@@ -8,7 +8,11 @@ export default function ProtectedRoute({ children, role }) {
     return <Navigate to="/login" replace />
   }
 
-  if (token && !user && loading) {
+  if (token && loading) {
+    return null
+  }
+
+  if (token && !user) {
     return null
   }
 

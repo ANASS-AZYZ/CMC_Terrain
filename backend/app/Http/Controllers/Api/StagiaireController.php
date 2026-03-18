@@ -84,7 +84,7 @@ class StagiaireController extends Controller
         }
 
         DB::transaction(function () use ($stagiaire): void {
-            // Extra safety: remove reservations created by this stagiaire even if FK constraints differ by environment.
+            
             Reservation::query()->where('created_by', $stagiaire->id)->delete();
             $stagiaire->delete();
         });

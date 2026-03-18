@@ -14,6 +14,10 @@ class ApiTokenAuth
         $token = $request->bearerToken();
 
         if (!$token) {
+            $token = trim((string) $request->header('X-Api-Token'));
+        }
+
+        if (!$token) {
             return new JsonResponse(['message' => 'Unauthorized'], 401);
         }
 

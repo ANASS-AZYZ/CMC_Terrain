@@ -11,9 +11,17 @@ export const fetchReservations = createAsyncThunk('reservations/fetch', async ()
   return data
 })
 
-export const createReservation = createAsyncThunk('reservations/create', async (payload) => {
-  const { data } = await api.post('/reservations', payload)
-  return data
+export const createReservation = createAsyncThunk('reservations/create', async (payload, { rejectWithValue }) => {
+  try {
+    const { data } = await api.post('/reservations', payload)
+    return data
+  } catch (error) {
+    const apiError = error?.response?.data
+    const firstFieldErrors = apiError?.errors ? Object.values(apiError.errors)[0] : null
+    const firstMessage = Array.isArray(firstFieldErrors) ? firstFieldErrors[0] : null
+
+    return rejectWithValue(firstMessage || apiError?.message || 'Reservation failed')
+  }
 })
 
 export const updateReservation = createAsyncThunk('reservations/update', async ({ id, payload }) => {
@@ -31,6 +39,11 @@ export const updateReservationStatus = createAsyncThunk('reservations/updateStat
   return data
 })
 
+export const cancelOwnReservation = createAsyncThunk('reservations/cancelOwn', async (id) => {
+  const { data } = await api.patch(`/reservations/${id}/cancel-self`)
+  return data
+})
+
 export const addReservationPlayer = createAsyncThunk('reservations/addPlayer', async ({ reservationId, studentId }) => {
   try {
     const { data } = await api.post(`/reservations/${reservationId}/players`, {
@@ -42,6 +55,11 @@ export const addReservationPlayer = createAsyncThunk('reservations/addPlayer', a
     const message = error?.response?.data?.message
     throw new Error(fieldError || message || 'Impossible d\'ajouter ce stagiaire.')
   }
+})
+
+export const removeReservationPlayer = createAsyncThunk('reservations/removePlayer', async ({ reservationId, playerId }) => {
+  await api.delete(`/reservations/${reservationId}/players/${playerId}`)
+  return { reservationId, playerId }
 })
 
 const reservationsSlice = createSlice({
@@ -66,11 +84,13 @@ const reservationsSlice = createSlice({
       .addCase(updateReservationStatus.fulfilled, (state, action) => {
         state.items = state.items.map((reservation) => (reservation.id === action.payload.id ? action.payload : reservation))
       })
+      .addCase(cancelOwnReservation.fulfilled, (state, action) => {
+        state.items = state.items.map((reservation) => (reservation.id === action.payload.id ? action.payload : reservation))
+      })
       .addCase(deleteReservation.fulfilled, (state, action) => {
         state.items = state.items.filter((reservation) => reservation.id !== action.payload)
       })
       .addCase(addReservationPlayer.fulfilled, (state) => {
-        // Player rows are managed in dedicated player list, not in the parent reservation table.
         state.loading = false
       })
   },

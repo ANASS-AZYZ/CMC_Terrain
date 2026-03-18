@@ -23,7 +23,9 @@ class ReservationController extends Controller
             ->latest('starts_at');
 
         if ($user && $user->role === 'stagiaire') {
-            $query->where('created_by', $user->id);
+            $query->where('created_by', $user->id)
+                ->whereNotIn('status', ['completed', 'cancelled'])
+                ->where('ends_at', '>', now());
         }
 
         return response()->json($query->get());
@@ -31,6 +33,14 @@ class ReservationController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        if ($request->filled('join_reservation_code')) {
+            $normalizedJoinCode = $this->normalizeReservationCode((string) $request->input('join_reservation_code'));
+
+            if ($normalizedJoinCode !== null) {
+                $request->merge(['join_reservation_code' => $normalizedJoinCode]);
+            }
+        }
+
         $data = $request->validate([
             'terrain_id' => ['required', 'exists:terrains,id'],
             'match_id' => ['nullable', 'exists:matches,id'],
@@ -68,6 +78,7 @@ class ReservationController extends Controller
 
         if (! empty($data['join_reservation_code'])) {
             $joinSourceReservation = Reservation::query()
+                ->whereNull('parent_reservation_id')
                 ->where('reservation_code', $data['join_reservation_code'])
                 ->first();
 
@@ -94,7 +105,7 @@ class ReservationController extends Controller
                 ], 422);
             }
 
-            $data['reservation_code'] = (string) $parentReservation->reservation_code;
+            $data['reservation_code'] = null;
             $data['parent_reservation_id'] = $parentReservation->id;
         }
 
@@ -112,25 +123,11 @@ class ReservationController extends Controller
             ], 422);
         }
 
-        if (($request->user()?->role ?? null) === 'stagiaire') {
-            $hasSameDayReservation = $this->hasSameDayReservationForUser(
-                (int) $request->user()->id,
-                $startsAt,
-                null,
-            );
-
-            if ($hasSameDayReservation) {
-                return response()->json([
-                    'message' => 'Validation error',
-                    'errors' => ['starts_at' => ['Vous ne pouvez pas reserver plus d\'un terrain le meme jour.']],
-                ], 422);
-            }
-        }
-
         if (! $joinSourceReservation) {
             $hasOverlap = Reservation::query()
                 ->whereNull('parent_reservation_id')
                 ->where('terrain_id', $data['terrain_id'])
+                ->whereNotIn('status', ['cancelled', 'rejected'])
                 ->where('starts_at', '<', $endsAt)
                 ->where('ends_at', '>', $startsAt)
                 ->exists();
@@ -141,27 +138,6 @@ class ReservationController extends Controller
                     'errors' => ['starts_at' => ['Ce creneau est deja reserve. Choisissez un autre horaire.']],
                 ], 422);
             }
-        }
-
-        $hasPlayerOverlap = Reservation::query()
-            ->where('starts_at', '<', $endsAt)
-            ->where('ends_at', '>', $startsAt)
-            ->where(function ($query) use ($data): void {
-                $query->where('student_email', $data['student_email']);
-
-                if (! empty($data['cin'])) {
-                    $query->orWhere('cin', $data['cin']);
-                }
-
-                $query->orWhere('student_name', $data['student_name']);
-            })
-            ->exists();
-
-        if ($hasPlayerOverlap) {
-            return response()->json([
-                'message' => 'Validation error',
-                'errors' => ['starts_at' => ['Ce joueur est deja reserve dans un autre terrain pendant ce creneau.']],
-            ], 422);
         }
 
         unset($data['join_reservation_code']);
@@ -175,11 +151,17 @@ class ReservationController extends Controller
 
     public function findByCode(string $code): JsonResponse
     {
+        $normalizedCode = $this->normalizeReservationCode($code);
+
+        if ($normalizedCode === null) {
+            return response()->json(['message' => 'Reservation not found'], 404);
+        }
+
         $this->syncStatusesFromMatches();
 
         $reservation = Reservation::query()
             ->with(['terrain', 'creator'])
-            ->where('reservation_code', $code)
+            ->where('reservation_code', $normalizedCode)
             ->whereNull('parent_reservation_id')
             ->first();
 
@@ -258,25 +240,11 @@ class ReservationController extends Controller
             ], 422);
         }
 
-        if (($request->user()?->role ?? null) === 'stagiaire') {
-            $hasSameDayReservation = $this->hasSameDayReservationForUser(
-                (int) $request->user()->id,
-                $startsAt,
-                (int) $reservation->id,
-            );
-
-            if ($hasSameDayReservation) {
-                return response()->json([
-                    'message' => 'Validation error',
-                    'errors' => ['starts_at' => ['Vous ne pouvez pas reserver plus d\'un terrain le meme jour.']],
-                ], 422);
-            }
-        }
-
         $hasOverlap = Reservation::query()
             ->whereNull('parent_reservation_id')
             ->where('terrain_id', $terrainId)
             ->where('id', '!=', $reservation->id)
+            ->whereNotIn('status', ['cancelled', 'rejected'])
             ->where('starts_at', '<', $endsAt)
             ->where('ends_at', '>', $startsAt)
             ->exists();
@@ -285,34 +253,6 @@ class ReservationController extends Controller
             return response()->json([
                 'message' => 'Validation error',
                 'errors' => ['starts_at' => ['Ce creneau est deja reserve. Choisissez un autre horaire.']],
-            ], 422);
-        }
-
-        $effectiveEmail = strtolower(trim((string) ($data['student_email'] ?? $reservation->student_email)));
-        $effectiveCin = ! empty($data['cin']) ? trim((string) $data['cin']) : ($reservation->cin ? trim((string) $reservation->cin) : null);
-        $effectiveStudentName = trim((string) ($data['student_name'] ?? $reservation->student_name));
-
-        $hasPlayerOverlap = Reservation::query()
-            ->where('id', '!=', $reservation->id)
-            ->where('starts_at', '<', $endsAt)
-            ->where('ends_at', '>', $startsAt)
-            ->where(function ($query) use ($effectiveEmail, $effectiveCin, $effectiveStudentName): void {
-                $query->where('student_email', $effectiveEmail);
-
-                if (! empty($effectiveCin)) {
-                    $query->orWhere('cin', $effectiveCin);
-                }
-
-                if (! empty($effectiveStudentName)) {
-                    $query->orWhere('student_name', $effectiveStudentName);
-                }
-            })
-            ->exists();
-
-        if ($hasPlayerOverlap) {
-            return response()->json([
-                'message' => 'Validation error',
-                'errors' => ['starts_at' => ['Ce joueur est deja reserve dans un autre terrain pendant ce creneau.']],
             ], 422);
         }
 
@@ -352,7 +292,7 @@ class ReservationController extends Controller
             'status' => $data['status'],
         ]);
 
-        // Keep associated players in sync with the same match status outcome.
+        
         Reservation::query()
             ->where('parent_reservation_id', $mainReservation->id)
             ->update(['status' => $data['status']]);
@@ -360,11 +300,103 @@ class ReservationController extends Controller
         return response()->json($mainReservation->load(['terrain', 'match', 'creator']));
     }
 
+    public function cancelOwn(Request $request, Reservation $reservation): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || (string) $user->role !== 'stagiaire') {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $mainReservationId = (int) ($reservation->parent_reservation_id ?: $reservation->id);
+
+        $mainReservation = Reservation::query()
+            ->whereKey($mainReservationId)
+            ->whereNull('parent_reservation_id')
+            ->first();
+
+        if (! $mainReservation) {
+            return response()->json(['message' => 'Reservation not found'], 404);
+        }
+
+        if ((int) $mainReservation->created_by !== (int) $user->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if (in_array((string) $mainReservation->status, ['completed', 'rejected'], true)) {
+            return response()->json(['message' => 'Reservation cannot be cancelled in its current status.'], 422);
+        }
+
+        $mainReservation->update(['status' => 'cancelled']);
+
+        Reservation::query()
+            ->where('parent_reservation_id', $mainReservation->id)
+            ->whereNotIn('status', ['completed', 'rejected'])
+            ->update(['status' => 'cancelled']);
+
+        return response()->json($mainReservation->load(['terrain', 'match', 'creator']));
+    }
+
+    public function confirmByQr(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || ! in_array((string) $user->role, ['admin', 'monitor'], true)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $payload = $request->validate([
+            'reservation_code' => ['nullable', 'string', 'max:120'],
+            'qr_payload' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $rawCode = trim((string) ($payload['reservation_code'] ?? ''));
+        $rawQrPayload = trim((string) ($payload['qr_payload'] ?? ''));
+
+        if ($rawCode === '' && $rawQrPayload === '') {
+            return response()->json([
+                'message' => 'Validation error',
+                'errors' => ['qr_payload' => ['QR payload or reservation code is required.']],
+            ], 422);
+        }
+
+        $code = $rawCode !== '' ? $this->normalizeReservationCode($rawCode) : $this->normalizeReservationCode($rawQrPayload);
+
+        if ($code === null) {
+            return response()->json([
+                'message' => 'Validation error',
+                'errors' => ['qr_payload' => ['Reservation code from QR is invalid.']],
+            ], 422);
+        }
+
+        $mainReservation = Reservation::query()
+            ->whereNull('parent_reservation_id')
+            ->where('reservation_code', $code)
+            ->first();
+
+        if (! $mainReservation) {
+            return response()->json(['message' => 'Reservation not found'], 404);
+        }
+
+        if (in_array((string) $mainReservation->status, ['cancelled', 'rejected'], true)) {
+            return response()->json(['message' => 'Reservation cannot be completed in its current status.'], 422);
+        }
+
+        $mainReservation->update(['status' => 'completed']);
+
+        Reservation::query()
+            ->where('parent_reservation_id', $mainReservation->id)
+            ->whereIn('status', ['pending', 'on_hold', 'confirmed'])
+            ->update(['status' => 'completed']);
+
+        return response()->json($mainReservation->load(['terrain', 'match', 'creator']));
+    }
+
     private function generateReservationCode(): string
     {
         do {
-            $code = (string) random_int(1000000, 9999999);
-        } while (Reservation::where('reservation_code', $code)->exists());
+            $code = str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+        } while (Reservation::whereNull('parent_reservation_id')->where('reservation_code', $code)->exists());
 
         return $code;
     }
@@ -401,6 +433,7 @@ class ReservationController extends Controller
             ->where('terrain_id', $reservation->terrain_id)
             ->where('starts_at', $reservation->starts_at)
             ->where('ends_at', $reservation->ends_at)
+            ->whereNotIn('status', ['cancelled', 'rejected'])
             ->where(function ($query) use ($stagiaire): void {
                 $query->where('student_email', strtolower((string) $stagiaire->email));
 
@@ -414,36 +447,6 @@ class ReservationController extends Controller
             return response()->json([
                 'message' => 'Validation error',
                 'errors' => ['student_id' => ['Ce stagiaire est deja dans cette reservation.']],
-            ], 422);
-        }
-
-        $hasPlayerOverlap = Reservation::query()
-            ->where('starts_at', '<', $endsAt)
-            ->where('ends_at', '>', $startsAt)
-            ->where(function ($query) use ($stagiaire): void {
-                $query->where('student_email', strtolower((string) $stagiaire->email));
-
-                if (! empty($stagiaire->cin)) {
-                    $query->orWhere('cin', trim((string) $stagiaire->cin));
-                }
-
-                $query->orWhere('student_name', trim((string) $stagiaire->name));
-            })
-            ->exists();
-
-        if ($hasPlayerOverlap) {
-            return response()->json([
-                'message' => 'Validation error',
-                'errors' => ['student_id' => ['Ce stagiaire a deja une reservation sur ce creneau.']],
-            ], 422);
-        }
-
-        $hasSameDayReservation = $this->hasSameDayReservationForUser((int) $stagiaire->id, $startsAt, null);
-
-        if ($hasSameDayReservation) {
-            return response()->json([
-                'message' => 'Validation error',
-                'errors' => ['student_id' => ['Ce stagiaire a deja une reservation ce jour-la.']],
             ], 422);
         }
 
@@ -462,24 +465,46 @@ class ReservationController extends Controller
             'ends_at' => $reservation->ends_at,
             'status' => 'pending',
             'created_by' => (int) $stagiaire->id,
-            'reservation_code' => (string) $reservation->reservation_code,
+            'reservation_code' => null,
         ])->load(['terrain', 'match', 'creator']);
 
         return response()->json($newReservation, 201);
     }
 
-    private function hasSameDayReservationForUser(int $userId, Carbon $startsAt, ?int $ignoreReservationId = null): bool
+    public function removePlayer(Request $request, Reservation $reservation, Reservation $player): JsonResponse
     {
-        $query = Reservation::query()
-            ->where('created_by', $userId)
-            ->whereDate('starts_at', $startsAt->toDateString())
-            ->whereNotIn('status', ['cancelled', 'rejected']);
+        $user = $request->user();
 
-        if ($ignoreReservationId) {
-            $query->where('id', '!=', $ignoreReservationId);
+        if (! $user || ! in_array((string) $user->role, ['admin', 'monitor', 'stagiaire'], true)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        return $query->exists();
+        $mainReservationId = (int) ($reservation->parent_reservation_id ?: $reservation->id);
+
+        $mainReservation = Reservation::query()
+            ->whereKey($mainReservationId)
+            ->whereNull('parent_reservation_id')
+            ->first();
+
+        if (! $mainReservation) {
+            return response()->json(['message' => 'Reservation not found'], 404);
+        }
+
+        if ((string) $user->role === 'stagiaire' && (int) $mainReservation->created_by !== (int) $user->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ((int) $player->id === (int) $mainReservation->id) {
+            return response()->json(['message' => 'Main reservation owner cannot be removed.'], 422);
+        }
+
+        if ((int) ($player->parent_reservation_id ?? 0) !== (int) $mainReservation->id) {
+            return response()->json(['message' => 'Player not found in this reservation.'], 404);
+        }
+
+        $player->delete();
+
+        return response()->json(['message' => 'Player removed']);
     }
 
     private function resolveStatusFromMatch(int $matchId, string $fallbackStatus): string
@@ -518,5 +543,24 @@ class ReservationController extends Controller
                 $query->where('status', 'cancelled');
             })
             ->update(['status' => 'cancelled']);
+    }
+
+    private function normalizeReservationCode(string $rawValue): ?string
+    {
+        $value = strtoupper(trim($rawValue));
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/\bRES[-_ ]?(\d{5})\b/', $value, $matches) === 1) {
+            return $matches[1];
+        }
+
+        if (preg_match('/\b(\d{5})\b/', $value, $matches) === 1) {
+            return $matches[1];
+        }
+
+        return null;
     }
 }

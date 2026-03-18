@@ -13,6 +13,7 @@ class Terrain extends Model
     protected $fillable = [
         'name',
         'image_url',
+        'image_urls',
         'type',
         'location',
         'capacity',
@@ -21,6 +22,7 @@ class Terrain extends Model
     ];
 
     protected $casts = [
+        'image_urls' => 'array',
         'online_booking' => 'boolean',
     ];
 

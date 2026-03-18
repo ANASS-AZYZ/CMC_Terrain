@@ -397,8 +397,9 @@ table {
 th,
 td {
   text-align: left;
-  padding: 12px;
+  padding: 4px 6px;
   border-bottom: 1px solid var(--soft);
+  font-size: 12px;
 }
 
 @keyframes rise {
@@ -471,9 +472,13 @@ td {
 }
 
 .stagiaire-shell .admin-top-navs {
-  justify-self: start;
-  gap: 16px;
-  margin-left: 10px;
+  justify-self: center;
+  width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-left: 0;
 }
 
 .stagiaire-shell .admin-top-link {
@@ -491,6 +496,10 @@ td {
   padding: 7px 10px;
 }
 
+:root[dir='rtl'] .stagiaire-shell .admin-top-actions {
+  justify-self: start;
+}
+
 .admin-sidebar {
   border-right: 1px solid var(--admin-border);
   background: color-mix(in srgb, var(--admin-panel) 88%, var(--admin-bg));
@@ -499,6 +508,23 @@ td {
   flex-direction: column;
   gap: 10px;
   font-family: Arial, sans-serif;
+}
+
+.admin-sidebar-toggle {
+  display: none;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: var(--admin-panel-2);
+  color: #30485f;
+  font-size: 20px;
+  line-height: 1;
+  padding: 0;
+}
+
+.admin-mobile-overlay {
+  display: none;
 }
 
 .admin-brand {
@@ -732,6 +758,35 @@ td {
 
 .user-menu-wrap {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-theme-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.theme-choice-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--admin-border);
+  border-radius: 999px;
+  background: var(--admin-panel-2);
+  color: #42556a;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.theme-choice-btn.active {
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
+  background: color-mix(in srgb, var(--admin-primary) 10%, var(--admin-panel-2));
 }
 
 .user-menu-list {
@@ -748,6 +803,11 @@ td {
   z-index: 24;
 }
 
+:root[dir='rtl'] .stagiaire-shell .user-menu-list {
+  right: 0;
+  left: auto;
+}
+
 .user-menu-item {
   border: 1px solid transparent;
   border-radius: 8px;
@@ -758,6 +818,69 @@ td {
   font-family: Arial, sans-serif;
   font-weight: 700;
   font-size: 14px;
+}
+
+.user-menu-meta {
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--admin-primary) 10%, transparent);
+  padding: 8px 10px;
+  display: grid;
+  gap: 3px;
+  margin-bottom: 2px;
+}
+
+.user-menu-meta span {
+  font-size: 11px;
+  color: var(--admin-muted);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.user-menu-meta strong {
+  font-size: 13px;
+  color: var(--admin-title);
+}
+
+.user-menu-lang {
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--admin-primary) 8%, transparent);
+  padding: 8px 10px;
+  display: grid;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.user-menu-lang span {
+  font-size: 11px;
+  color: var(--admin-muted);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.user-menu-lang-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.user-menu-lang-btn {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: var(--admin-panel-2);
+  color: var(--admin-title);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 0;
+}
+
+.user-menu-lang-btn.active {
+  background: color-mix(in srgb, var(--admin-primary) 20%, transparent);
+  border-color: color-mix(in srgb, var(--admin-primary) 45%, transparent);
+  color: var(--admin-primary);
 }
 
 .user-menu-item:hover {
@@ -943,6 +1066,7 @@ td {
   border: 1px solid var(--admin-border);
   border-radius: 10px;
   padding: 10px 12px;
+  width: 100%;
   background: #fff;
   color: #1f3248;
   font-family: Arial, sans-serif;
@@ -953,6 +1077,34 @@ td {
   background: #edf3f9;
   color: #516780;
   cursor: not-allowed;
+}
+
+.profile-password-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.profile-password-input-wrap input {
+  padding-right: 42px;
+}
+
+.profile-password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 0;
+  bottom: 0;
+  border: 0;
+  background: transparent;
+  color: #2a3f55;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-password-toggle svg {
+  width: 19px;
+  height: 19px;
 }
 
 .profile-msg {
@@ -1204,6 +1356,11 @@ td {
   min-height: 350px;
 }
 
+.terrain-card-image-wrap,
+.stagiaire-home-image-wrap {
+  position: relative;
+}
+
 .terrain-card-image {
   width: 100%;
   height: auto;
@@ -1212,6 +1369,51 @@ td {
   border-radius: 10px;
   border: 1px solid var(--admin-border);
   background: #eef3f9;
+}
+
+.terrain-card-image-empty {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  color: #7b8ea2;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.terrain-image-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--admin-border);
+  background: rgba(15, 34, 53, 0.72);
+  color: #f7fbff;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+}
+
+.terrain-image-nav.prev {
+  left: 8px;
+}
+
+.terrain-image-nav.next {
+  right: 8px;
+}
+
+.terrain-image-counter {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  border-radius: 999px;
+  background: rgba(15, 34, 53, 0.74);
+  color: #f7fbff;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .terrain-card-top {
@@ -1430,6 +1632,43 @@ td {
   background: #f3f7fc;
 }
 
+.terrain-form-gallery {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+}
+
+.terrain-form-gallery-title {
+  margin: 0;
+  color: #33485f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.terrain-form-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.terrain-form-gallery-item {
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.terrain-gallery-remove-btn {
+  border: 1px solid var(--admin-border);
+  background: #eef3f8;
+  color: #2f4860;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
 .terrain-form-checkbox {
   grid-column: 1 / -1;
   display: flex;
@@ -1509,6 +1748,23 @@ td {
   font-size: 13px;
 }
 
+.reservation-qr-scan-trigger {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--admin-border);
+  background: #eef4fb;
+  color: #24435e;
+  border-radius: 10px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.reservation-qr-scan-trigger svg {
+  width: 18px;
+  height: 18px;
+}
+
 .reservation-checker-row {
   display: flex;
   gap: 10px;
@@ -1524,6 +1780,67 @@ td {
   color: #1f3449;
   padding: 10px 12px;
   font-size: 14px;
+}
+
+.reservation-qr-preview {
+  display: grid;
+  gap: 10px;
+}
+
+.reservation-qr-preview-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.reservation-scanner-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(6, 16, 29, 0.56);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+
+.reservation-scanner-modal {
+  width: min(520px, 100%);
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+  background: #f8fcff;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.reservation-scanner-video-wrap {
+  position: relative;
+  border: 1px solid #d8e4f1;
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 260px;
+  background: #0e2236;
+}
+
+.reservation-scanner-video {
+  width: 100%;
+  height: 100%;
+  min-height: 260px;
+  object-fit: cover;
+}
+
+.reservation-scanner-target {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(62vw, 220px);
+  height: min(62vw, 220px);
+  max-width: 220px;
+  max-height: 220px;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(105, 212, 251, 0.92);
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(9, 20, 33, 0.38);
 }
 
 .reservation-check-result {
@@ -1597,9 +1914,9 @@ td {
   border: 1px solid var(--admin-border);
   background: #f2f6fb;
   color: #2f4860;
-  border-radius: 8px;
-  padding: 6px 9px;
-  font-size: 12px;
+  border-radius: 5px;
+  padding: 3px 6px;
+  font-size: 9px;
   font-weight: 700;
 }
 
@@ -1608,16 +1925,16 @@ td {
 }
 
 .reservation-icon-btn {
-  width: 30px;
-  height: 30px;
+  width: 22px;
+  height: 22px;
   border: 1px solid var(--admin-border);
   background: #f2f6fb;
   color: #2f4860;
-  border-radius: 8px;
+  border-radius: 5px;
   padding: 0;
   display: grid;
   place-items: center;
-  font-size: 13px;
+  font-size: 9px;
   font-weight: 700;
 }
 
@@ -1930,6 +2247,403 @@ td {
   color: #0a2f46;
 }
 
+.hide-on-mobile {
+  display: table-cell;
+}
+
+.reservation-name-cell {
+  min-width: 140px;
+}
+
+.reservation-name-cell .name-main {
+  font-weight: 700;
+  color: #1a2b40;
+  margin: 0;
+}
+
+.reservation-name-cell .name-meta {
+  font-size: 11px;
+  color: #7a8fa3;
+  margin-top: 2px;
+}
+
+.reservation-code-cell {
+  font-family: 'Tahoma', 'Courier New', monospace;
+  font-weight: 600;
+  color: #124b75;
+  letter-spacing: 0.5px;
+}
+
+.reservation-code-cell strong {
+  font-size: 9px;
+}
+
+.reservation-modal {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+}
+
+.reservation-modal-qr-top {
+  padding: 16px;
+  border-bottom: 1px solid #e0e8f0;
+}
+
+.reservation-modal-image-small {
+  width: 100%;
+  height: 180px;
+  background: #f0f4f8;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-bottom: 1px solid #e0e8f0;
+}
+
+.reservation-modal-img-small {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reservation-modal-image {
+  width: 100%;
+  height: 250px;
+  background: #f0f4f8;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.reservation-modal-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reservation-modal-img-fallback {
+  color: #6f859d;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.reservation-modal-content {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.reservation-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e8f0;
+}
+
+.reservation-modal-header h4 {
+  margin: 0;
+  font-size: 20px;
+  color: #172a40;
+}
+
+.reservation-modal-sub {
+  margin: 4px 0 0;
+  color: #56708a;
+  font-size: 13px;
+}
+
+.reservation-modal-id {
+  text-align: right;
+  display: grid;
+  gap: 3px;
+}
+
+.reservation-modal-id strong {
+  color: #1f3550;
+  font-size: 16px;
+}
+
+.reservation-modal-id small {
+  color: #68839f;
+  font-size: 12px;
+}
+
+.reservation-modal-body {
+  display: grid;
+  gap: 16px;
+}
+
+.reservation-modal-section {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  background: #f0f5fa;
+  border-radius: 8px;
+  border: 1px solid #dce8f3;
+}
+
+.reservation-modal-section h5 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #1a2b40;
+  font-weight: 700;
+}
+
+.reservation-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.modal-field {
+  display: grid;
+  gap: 4px;
+}
+
+.modal-field-full {
+  grid-column: 1 / -1;
+}
+
+.modal-field span {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  color: #6d849d;
+  font-weight: 700;
+}
+
+.modal-field strong {
+  color: #18314c;
+  font-size: 15px;
+}
+
+.modal-field em {
+  font-style: normal;
+  color: #4a6680;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.reservation-qr-section {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+  background: #f7fbff;
+  border-radius: 10px;
+  border: 1px solid #e0e8f0;
+}
+
+.reservation-qr-container {
+  display: grid;
+  place-items: center;
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #d5e0eb;
+}
+
+.reservation-qr-info {
+  display: grid;
+  gap: 6px;
+  flex: 1;
+}
+
+.reservation-qr-info strong {
+  font-size: 14px;
+  color: #1a2b40;
+}
+
+.reservation-id-code {
+  font-family: 'Courier New', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0d4a8f;
+  letter-spacing: 2px;
+}
+
+.reservation-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.reservation-btn-cancel {
+  border: 1px solid #d9656e;
+  background: #f5dfe2;
+  color: #9a2835;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reservation-btn-cancel:hover {
+  background: #d9656e;
+  color: #fff;
+}
+
+.reservation-btn-cancel:active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 1100px) {
+  .reservations-management {
+    max-width: 100%;
+    padding: 0 12px;
+  }
+}
+
+@media (max-width: 760px) {
+  .reservations-management .hide-on-mobile {
+    display: table-cell;
+  }
+
+  .reservation-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .reservation-head h2 {
+    font-size: 18px;
+  }
+
+  .reservations-management .table-wrap {
+    overflow-x: auto;
+    border-radius: 8px;
+  }
+
+  .reservations-management .table-wrap table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+    font-size: 8px;
+  }
+
+  .reservations-management .table-wrap th,
+  .reservations-management .table-wrap td {
+    padding: 2px 2px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .reservations-management .table-wrap thead th:nth-child(1) { width: 25%; }
+  .reservations-management .table-wrap thead th:nth-child(2) { width: 26%; }
+  .reservations-management .table-wrap thead th:nth-child(3) { width: 21%; }
+  .reservations-management .table-wrap thead th:nth-child(4) { width: 28%; }
+
+  .reservations-management .table-wrap th {
+    font-size: 7px;
+    line-height: 1.1;
+  }
+
+  .reservations-management .table-wrap td {
+    font-size: 7px;
+    line-height: 1.15;
+  }
+
+  .reservations-management .table-wrap td:nth-child(1),
+  .reservations-management .table-wrap td:nth-child(3) {
+    white-space: nowrap;
+  }
+
+  .reservations-management .status-badge {
+    font-size: 6px;
+    padding: 1px 2px;
+  }
+
+  .reservation-name-cell {
+    min-width: 0;
+  }
+
+  .reservation-name-cell .name-main {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .reservation-name-cell .name-meta {
+    font-size: 7px;
+    margin-top: 0px;
+  }
+
+  .reservation-actions-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    min-width: 0;
+  }
+
+  .reservation-action-btn,
+  .reservation-icon-btn {
+    width: 50%;
+    padding: 1px 1px;
+    font-size: 5px;
+    line-height: 1;
+    min-width: 0;
+    min-height: 12px;
+    border-radius: 3px;
+  }
+
+  .reservation-modal-image {
+    height: 200px;
+  }
+
+  .reservation-modal-image-small {
+    height: 160px;
+  }
+
+  .reservation-modal-qr-top {
+    padding: 12px;
+  }
+
+  .reservation-qr-section {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .reservation-qr-container {
+    width: 100%;
+  }
+
+  .reservation-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-modal-content {
+    padding: 12px;
+  }
+
+  .reservation-modal-body {
+    gap: 12px;
+  }
+
+  .reservation-modal-section {
+    padding: 10px;
+  }
+
+  .reservation-modal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .reservation-modal-id {
+    text-align: left;
+  }
+
+  .reservation-modal-actions {
+    padding: 8px 0;
+  }
+}
+
 .stagiaires-management {
   max-width: 1040px;
   margin: 40px auto 0;
@@ -2108,7 +2822,7 @@ td {
 .stagiaire-home-head h1 {
   margin: 0;
   color: #15263a;
-  font-size: 44px;
+  font-size: 38px;
   line-height: 1.04;
 }
 
@@ -2185,7 +2899,7 @@ td {
 
 .stagiaire-upcoming-panel {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .stagiaire-upcoming-head {
@@ -2198,7 +2912,7 @@ td {
 .stagiaire-upcoming-head h2 {
   margin: 0;
   color: #16263a;
-  font-size: 28px;
+  font-size: 24px;
 }
 
 .upcoming-empty-state {
@@ -2248,6 +2962,103 @@ td {
   padding: 10px 16px;
   font-size: 14px;
   font-weight: 700;
+}
+
+.terrain-link-btn {
+  background: none;
+  border: none;
+  color: #0066cc;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font-size: 13px;
+  font-family: inherit;
+  transition: color 0.2s ease;
+}
+
+.terrain-link-btn:hover {
+  color: #0052a3;
+}
+
+.terrain-info-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 16px;
+}
+
+.terrain-info-modal {
+  background: var(--panel);
+  border: 1px solid var(--soft);
+  border-radius: 12px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.terrain-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--soft);
+}
+
+.terrain-info-header h3 {
+  margin: 0;
+  color: #16263a;
+  font-size: 18px;
+}
+
+.close-modal-btn {
+  background: none;
+  border: none;
+  color: #5c748d;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.close-modal-btn:hover {
+  color: #16263a;
+}
+
+.terrain-info-content {
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.terrain-info-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.terrain-info-label {
+  color: #5c748d;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.terrain-info-value {
+  color: #16263a;
+  font-size: 14px;
 }
 
 .stagiaire-location-card {
@@ -2335,7 +3146,7 @@ td {
 
 .stagiaire-reserve-head h2 {
   margin: 0;
-  font-size: 34px;
+  font-size: 30px;
   color: #16263a;
 }
 
@@ -2826,19 +3637,51 @@ td {
 @media (max-width: 1100px) {
   .admin-shell {
     grid-template-columns: 1fr;
+    position: relative;
   }
 
   .admin-sidebar {
-    border-right: 0;
-    border-bottom: 1px solid #d8e0ea;
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(84vw, 320px);
+    border-right: 1px solid #d8e0ea;
+    border-bottom: 0;
+    transform: translateX(-105%);
+    transition: transform 0.26s ease;
+    z-index: 30;
+    overflow-y: auto;
+    box-shadow: 0 18px 40px -26px #00000099;
+  }
+
+  .admin-shell.mobile-sidebar-open .admin-sidebar {
+    transform: translateX(0);
+  }
+
+  .admin-mobile-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 16, 28, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 20;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+  }
+
+  .admin-shell.mobile-sidebar-open .admin-mobile-overlay {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .dashboard-stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
   }
 
   .admin-content {
-    padding: 20px;
+    padding: 18px 14px;
   }
 
   .admin-topbar {
@@ -2847,15 +3690,7 @@ td {
   }
 
   .dashboard-stat-card {
-    min-height: 150px;
-  }
-
-  .dashboard-stat-card h4 {
-    font-size: 15px;
-  }
-
-  .dashboard-stat-card strong {
-    font-size: 42px;
+    min-height: 112px;
   }
 
   .panel-head {
@@ -2880,20 +3715,55 @@ td {
     display: none;
   }
 
+  .admin-topbar {
+    padding: 10px 14px;
+    grid-template-columns: auto 1fr auto;
+    justify-items: stretch;
+    gap: 10px;
+    min-height: 80px;
+    align-items: center;
+  }
+
+  .admin-sidebar-toggle {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+  }
+
   .admin-top-brand {
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .ofppt-logo {
+    width: 136px;
+    height: 40px;
+  }
+
+  .ofppt-divider {
     display: none;
   }
 
-  .admin-topbar {
-    padding: 0 16px;
-    grid-template-columns: 1fr;
-    justify-items: center;
-    gap: 8px;
-    min-height: 88px;
+  .admin-top-navs {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+
+  .admin-top-link {
+    font-size: 15px;
+    white-space: nowrap;
+    padding: 0 10px;
   }
 
   .admin-top-actions {
-    justify-self: center;
+    justify-self: end;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    row-gap: 6px;
   }
 
   .terrain-filters {
@@ -2934,6 +3804,16 @@ td {
     grid-template-columns: 1fr;
   }
 
+  .terrain-image-nav {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+
+  .terrain-image-counter {
+    font-size: 10px;
+  }
+
   .reservation-details-grid,
   .reservation-form-card {
     grid-template-columns: 1fr;
@@ -2970,22 +3850,224 @@ td {
   .stagiaires-controls input {
     min-width: 0;
   }
+}
 
-  .terrain-management h2 {
-    font-size: 32px;
+@media (max-width: 760px) {
+  .stagiaire-home-head h1 {
+    font-size: 21px;
+    line-height: 1.2;
+    white-space: nowrap;
   }
 
-  .terrain-card h3 {
-    font-size: 28px;
+  .dashboard-stats-grid {
+    grid-template-columns: 1fr;
   }
 
-  .terrain-card-meta,
-  .terrain-capacity-row span,
-  .terrain-capacity-row strong,
-  .terrain-booking-row span,
-  .card-link-btn,
-  .terrain-stats-row {
+  .dashboard-admin,
+  .admin-profile-page,
+  .terrain-management,
+  .reservations-management,
+  .stagiaires-management {
+    margin-top: 18px;
+  }
+
+  .dashboard-welcome-card h3,
+  .terrain-management h2,
+  .reservation-head h2,
+  .stagiaires-head h2 {
+    font-size: 24px;
+  }
+
+  .reservation-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .reservation-add-btn,
+  .terrain-add-btn,
+  .stagiaire-btn-add {
+    width: 100%;
+  }
+
+  .reservation-actions-cell,
+  .stagiaire-row-actions,
+  .terrain-card-actions,
+  .reservation-form-actions,
+  .terrain-form-actions,
+  .admin-profile-actions {
+    flex-wrap: wrap;
+  }
+
+  .reservation-action-btn,
+  .reservation-btn-save,
+  .reservation-btn-cancel,
+  .terrain-btn-save,
+  .terrain-btn-cancel,
+  .stagiaire-btn-save {
+    width: 100%;
+  }
+
+  .reservation-add-player-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .reservation-add-player-form input {
+    min-width: 0;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 680px;
+  }
+
+  .stagiaire-upcoming-panel .table-wrap {
+    overflow-x: hidden;
+  }
+
+  .stagiaire-upcoming-panel .table-wrap table {
+    min-width: 0;
+    width: 100%;
+    table-layout: fixed;
+    font-size: 9px;
+  }
+
+  .stagiaire-upcoming-panel .table-wrap th,
+  .stagiaire-upcoming-panel .table-wrap td {
+    padding: 4px 3px;
+    font-size: 9px;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stagiaire-upcoming-panel .table-wrap thead th:nth-child(1) { width: 30%; }
+  .stagiaire-upcoming-panel .table-wrap thead th:nth-child(2) { width: 26%; }
+  .stagiaire-upcoming-panel .table-wrap thead th:nth-child(3) { width: 14%; }
+  .stagiaire-upcoming-panel .table-wrap thead th:nth-child(4) { width: 18%; }
+  .stagiaire-upcoming-panel .table-wrap thead th:nth-child(5) { width: 12%; }
+
+  .stagiaire-upcoming-panel .status-badge {
+    font-size: 7px;
+    padding: 1px 3px;
+  }
+
+  .stagiaire-shell .admin-topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'brand actions'
+      'nav nav';
+    align-items: center;
+    gap: 8px 10px;
+    padding: 10px 12px;
+  }
+
+  :root[dir='rtl'] .stagiaire-shell .admin-topbar {
+    grid-template-areas:
+      'actions brand'
+      'nav nav';
+  }
+
+  .stagiaire-shell .admin-top-brand {
+    grid-area: brand;
+    min-width: 0;
+  }
+
+  .stagiaire-shell .ofppt-logo {
+    width: 116px;
+    height: 34px;
+  }
+
+  .stagiaire-shell .admin-top-actions {
+    grid-area: actions;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+    justify-self: end;
+  }
+
+  :root[dir='rtl'] .stagiaire-shell .admin-top-actions {
+    justify-self: start;
+  }
+
+  .stagiaire-shell .admin-top-actions .icon-btn {
+    display: none;
+  }
+
+  .stagiaire-shell .theme-choice-btn {
+    width: 23px;
+    height: 23px;
+    font-size: 10px;
+  }
+
+  .stagiaire-shell .student-id-chip {
+    display: none;
+  }
+
+  .stagiaire-shell .admin-user-chip {
+    font-size: 11px;
+    padding: 6px 8px;
+    max-width: 118px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .stagiaire-shell .user-menu-list {
+    top: calc(100% + 2px);
+    max-height: calc(100vh - 90px);
+    overflow-y: auto;
+    z-index: 1200;
+  }
+
+  .stagiaire-shell .admin-top-navs {
+    grid-area: nav;
+    margin-left: 0;
+    width: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+    gap: 3px;
+    padding-bottom: 2px;
+  }
+
+  .stagiaire-shell .admin-top-link {
+    font-size: 12px;
+    padding: 0 4px;
+  }
+
+  .stagiaire-reserve-head h2 {
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .stagiaire-reserve-head p {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .stagiaire-upcoming-head h2 {
+    font-size: 16px;
+  }
+
+  .upcoming-empty-state h3,
+  .stagiaire-reserve-top h3 {
     font-size: 18px;
+  }
+
+  .upcoming-empty-state p,
+  .stagiaire-reserve-empty,
+  .stagiaire-home-description,
+  .stagiaire-home-meta,
+  .stagiaire-home-features {
+    font-size: 12px;
   }
 }
 
@@ -3027,6 +4109,17 @@ td {
 :root[data-theme='dark'] .terrain-card-image {
   background: #0f2032;
   border-color: #35516e;
+}
+
+:root[data-theme='dark'] .terrain-card-image-empty {
+  color: #c6d8eb;
+}
+
+:root[data-theme='dark'] .terrain-image-nav,
+:root[data-theme='dark'] .terrain-image-counter {
+  background: rgba(7, 16, 28, 0.78);
+  border-color: #35516e;
+  color: #f4f8ff;
 }
 
 :root[data-theme='dark'] .terrain-card h3,
@@ -3172,6 +4265,21 @@ td {
   color: #f4f8ff;
 }
 
+:root[data-theme='dark'] .reservation-qr-scan-trigger {
+  background: #1a314a;
+  border-color: #35516e;
+  color: #f4f8ff;
+}
+
+:root[data-theme='dark'] .reservation-scanner-modal {
+  background: #13263a;
+  border-color: #35516e;
+}
+
+:root[data-theme='dark'] .reservation-scanner-video-wrap {
+  border-color: #35516e;
+}
+
 :root[data-theme='dark'] .reservation-status-list-card {
   background: #0f2235;
   border-color: #35516e;
@@ -3236,6 +4344,15 @@ td {
   background: #0f2235;
   border-color: #35516e;
   color: #d5e3f3;
+}
+
+:root[data-theme='dark'] .terrain-form-gallery-title {
+  color: #d5e3f3;
+}
+
+:root[data-theme='dark'] .terrain-form-gallery-item {
+  background: #0f2235;
+  border-color: #35516e;
 }
 
 :root[data-theme='dark'] .terrain-btn-cancel,
@@ -3437,6 +4554,10 @@ td {
   color: #d6e5f6;
 }
 
+:root[data-theme='dark'] .profile-password-toggle {
+  color: #d6e5f6;
+}
+
 :root[data-theme='dark'] .reservation-pass-card {
   border-color: #35516e;
   background: linear-gradient(180deg, #13273d 0%, #0f2033 100%);
@@ -3472,6 +4593,106 @@ td {
   background: #13253a;
 }
 
+:root[data-theme='dark'] .reservation-modal-image {
+  background: #0f2235;
+}
+
+:root[data-theme='dark'] .reservation-modal-content {
+  background: #16293d;
+}
+
+:root[data-theme='dark'] .reservation-modal-header {
+  border-bottom-color: #2a425e;
+}
+
+:root[data-theme='dark'] .reservation-modal-header h4,
+:root[data-theme='dark'] .reservation-modal-section h5 {
+  color: #f4f8ff;
+}
+
+:root[data-theme='dark'] .reservation-modal-sub {
+  color: #b5c9df;
+}
+
+:root[data-theme='dark'] .reservation-modal-id strong {
+  color: #f4f8ff;
+}
+
+:root[data-theme='dark'] .reservation-modal-id small {
+  color: #8ba3be;
+}
+
+:root[data-theme='dark'] .modal-field span {
+  color: #8ba3be;
+}
+
+:root[data-theme='dark'] .modal-field strong {
+  color: #f4f8ff;
+}
+
+:root[data-theme='dark'] .modal-field em {
+  color: #b5c9df;
+}
+
+:root[data-theme='dark'] .reservation-modal-section {
+  background: #0f2235;
+  border-color: #2a425e;
+}
+
+:root[data-theme='dark'] .reservation-modal-section h5 {
+  color: #f4f8ff;
+}
+
+:root[data-theme='dark'] .reservation-modal-qr-top {
+  border-bottom-color: #2a425e;
+}
+
+:root[data-theme='dark'] .reservation-modal-image-small {
+  background: #0f2235;
+  border-bottom-color: #2a425e;
+}
+
+:root[data-theme='dark'] .reservation-qr-section {
+  background: #0f2235;
+  border-color: #2a425e;
+}
+
+:root[data-theme='dark'] .reservation-qr-container {
+  background: #16293d;
+  border-color: #35516e;
+}
+
+:root[data-theme='dark'] .reservation-qr-info strong {
+  color: #f4f8ff;
+}
+
+:root[data-theme='dark'] .reservation-id-code {
+  color: #7fbfff;
+}
+
+:root[data-theme='dark'] .reservation-btn-cancel {
+  background: #3d1a1f;
+  border-color: #7a3f47;
+  color: #ff8a9f;
+}
+
+:root[data-theme='dark'] .reservation-btn-cancel:hover {
+  background: #7a3f47;
+  color: #fff;
+}
+
+:root[data-theme='dark'] .reservation-name-cell .name-main {
+  color: #f4f8ff;
+}
+
+:root[data-theme='dark'] .reservation-name-cell .name-meta {
+  color: #8ba3be;
+}
+
+:root[data-theme='dark'] .reservation-code-cell {
+  color: #5ba3ff;
+}
+
 :root[data-theme='dark'] .stagiaire-home-head h1,
 :root[data-theme='dark'] .stagiaire-upcoming-head h2,
 :root[data-theme='dark'] .stagiaire-home-card-top h3 {
@@ -3489,6 +4710,47 @@ td {
 
 :root[data-theme='dark'] .upcoming-empty-state p {
   color: #cfe0f3;
+}
+
+:root[data-theme='dark'] .terrain-link-btn {
+  color: #5ba3ff;
+}
+
+:root[data-theme='dark'] .terrain-link-btn:hover {
+  color: #7cb8ff;
+}
+
+:root[data-theme='dark'] .terrain-info-modal {
+  background: #1a2d45;
+  border-color: #35516e;
+}
+
+:root[data-theme='dark'] .terrain-info-header {
+  border-color: #35516e;
+}
+
+:root[data-theme='dark'] .terrain-info-header h3 {
+  color: #f4f8ff;
+}
+
+:root[data-theme='dark'] .close-modal-btn {
+  color: #8ba3be;
+}
+
+:root[data-theme='dark'] .close-modal-btn:hover {
+  color: #f4f8ff;
+}
+
+:root[data-theme='dark'] .terrain-info-content {
+  border-color: #35516e;
+}
+
+:root[data-theme='dark'] .terrain-info-label {
+  color: #8ba3be;
+}
+
+:root[data-theme='dark'] .terrain-info-value {
+  color: #f4f8ff;
 }
 
 :root[data-theme='dark'] .stagiaire-home-head p,

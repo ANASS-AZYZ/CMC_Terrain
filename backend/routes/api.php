@@ -38,9 +38,12 @@ Route::middleware('auth.api')->group(function (): void {
 
     Route::get('/reservations', [ReservationController::class, 'index']);
     Route::get('/reservations/code/{code}', [ReservationController::class, 'findByCode']);
+    Route::post('/reservations/confirm-by-qr', [ReservationController::class, 'confirmByQr']);
     Route::post('/reservations', [ReservationController::class, 'store']);
     Route::post('/reservations/{reservation}/players', [ReservationController::class, 'addPlayer']);
+    Route::delete('/reservations/{reservation}/players/{player}', [ReservationController::class, 'removePlayer']);
     Route::patch('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
+    Route::patch('/reservations/{reservation}/cancel-self', [ReservationController::class, 'cancelOwn']);
     Route::put('/reservations/{reservation}', [ReservationController::class, 'update'])->middleware('admin.only');
     Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy'])->middleware('admin.only');
 

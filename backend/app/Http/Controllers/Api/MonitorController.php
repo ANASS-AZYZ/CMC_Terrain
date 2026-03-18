@@ -59,7 +59,7 @@ class MonitorController extends Controller
 
         $data['name'] = trim($data['first_name'].' '.$data['last_name']);
 
-        // Monitor accounts are managed by admin, so updated emails are trusted as verified.
+        
         if (! empty($data['email'])) {
             $data['email_verified_at'] = now();
         }

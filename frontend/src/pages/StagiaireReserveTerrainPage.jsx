@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
@@ -12,6 +12,7 @@ export default function StagiaireReserveTerrainPage() {
   const terrains = useAppSelector((state) => state.terrains.items)
   const loading = useAppSelector((state) => state.terrains.loading)
   const reservations = useAppSelector((state) => state.reservations.items)
+  const [imageIndexByTerrain, setImageIndexByTerrain] = useState({})
   const locationLink = 'https://maps.app.goo.gl/dPyetBDqNWnQXYWT9'
   const mapEmbedSrc = 'https://www.google.com/maps?q=Cite+des+Metiers+et+des+Competences+de+Rabat-Sale-Kenitra&output=embed'
 
@@ -40,7 +41,7 @@ export default function StagiaireReserveTerrainPage() {
       .slice(0, 4)
       .map((reservation) => ({
         id: reservation.id,
-        studentName: reservation.student_name || `${reservation.first_name || ''} ${reservation.last_name || ''}`.trim(),
+        code: reservation.reservation_code || String(reservation.id).padStart(5, '0'),
         terrainName: reservation.terrain?.name || '-',
         dateLabel: new Date(reservation.starts_at).toLocaleDateString(),
         timeLabel: `${new Date(reservation.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(reservation.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
@@ -65,6 +66,33 @@ export default function StagiaireReserveTerrainPage() {
     return t('statusPending')
   }
 
+  const getTerrainImages = (terrain) => {
+    const gallery = Array.isArray(terrain.image_urls) ? terrain.image_urls : []
+    const merged = [...gallery]
+
+    if (terrain.image_url) {
+      merged.unshift(terrain.image_url)
+    }
+
+    return Array.from(new Set(merged.filter(Boolean)))
+  }
+
+  const goToPrevImage = (terrainId, imagesLength) => {
+    setImageIndexByTerrain((prev) => {
+      const current = prev[terrainId] ?? 0
+      const next = (current - 1 + imagesLength) % imagesLength
+      return { ...prev, [terrainId]: next }
+    })
+  }
+
+  const goToNextImage = (terrainId, imagesLength) => {
+    setImageIndexByTerrain((prev) => {
+      const current = prev[terrainId] ?? 0
+      const next = (current + 1) % imagesLength
+      return { ...prev, [terrainId]: next }
+    })
+  }
+
   return (
     <section className="stagiaire-home-page">
       <header className="stagiaire-home-head">
@@ -81,7 +109,37 @@ export default function StagiaireReserveTerrainPage() {
       <div className="stagiaire-home-grid">
         {reservableTerrains.map((terrain) => (
           <article key={terrain.id} className="stagiaire-home-card">
-            {terrain.image_url ? <img src={terrain.image_url} alt={terrain.name} className="stagiaire-home-image" /> : null}
+            {(() => {
+              const images = getTerrainImages(terrain)
+              const currentIndex = images.length > 0 ? (imageIndexByTerrain[terrain.id] ?? 0) % images.length : 0
+
+              return images.length > 0 ? (
+                <div className="stagiaire-home-image-wrap">
+                  <img src={images[currentIndex]} alt={terrain.name} className="stagiaire-home-image" />
+                  {images.length > 1 ? (
+                    <>
+                      <button
+                        type="button"
+                        className="terrain-image-nav prev"
+                        onClick={() => goToPrevImage(terrain.id, images.length)}
+                        aria-label="Previous image"
+                      >
+                        {'<'}
+                      </button>
+                      <button
+                        type="button"
+                        className="terrain-image-nav next"
+                        onClick={() => goToNextImage(terrain.id, images.length)}
+                        aria-label="Next image"
+                      >
+                        {'>'}
+                      </button>
+                      <span className="terrain-image-counter">{currentIndex + 1}/{images.length}</span>
+                    </>
+                  ) : null}
+                </div>
+              ) : null
+            })()}
 
             <div className="stagiaire-home-card-top">
               <h3>{terrain.name}</h3>
@@ -136,7 +194,7 @@ export default function StagiaireReserveTerrainPage() {
             <table>
               <thead>
                 <tr>
-                  <th>{t('studentName')}</th>
+                  <th>{t('reservationNumber')}</th>
                   <th>{t('fieldTerrain')}</th>
                   <th>{t('date')}</th>
                   <th>{t('timeSlot')}</th>
@@ -146,7 +204,7 @@ export default function StagiaireReserveTerrainPage() {
               <tbody>
                 {upcomingReservations.map((item) => (
                   <tr key={item.id}>
-                    <td>{item.studentName || '-'}</td>
+                    <td>RES-{item.code}</td>
                     <td>{item.terrainName}</td>
                     <td>{item.dateLabel}</td>
                     <td>{item.timeLabel}</td>

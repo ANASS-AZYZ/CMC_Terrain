@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import { QRCodeSVG } from 'qrcode.react'
+import jsQR from 'jsqr'
 import api from '../api/client'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
-import { addReservationPlayer, deleteReservation, fetchReservations, updateReservationStatus } from '../features/reservations/reservationsSlice'
+import { addReservationPlayer, cancelOwnReservation, deleteReservation, fetchReservations, removeReservationPlayer, updateReservationStatus } from '../features/reservations/reservationsSlice'
 
 export default function ReservationsPage() {
   const { t } = useTranslation()
@@ -20,15 +22,32 @@ export default function ReservationsPage() {
   const [playersList, setPlayersList] = useState([])
   const [playersLoading, setPlayersLoading] = useState(false)
   const [playersError, setPlayersError] = useState('')
+  const [removingPlayerId, setRemovingPlayerId] = useState(null)
   const [reservationLookupId, setReservationLookupId] = useState('')
   const [lookupResult, setLookupResult] = useState(null)
   const [statusReservationId, setStatusReservationId] = useState('')
   const [statusSelection, setStatusSelection] = useState('completed')
   const [statusFormError, setStatusFormError] = useState('')
   const [statusFormLoading, setStatusFormLoading] = useState(false)
+  const [cancelingReservation, setCancelingReservation] = useState(false)
   const [editingStatusId, setEditingStatusId] = useState(null)
   const [editingStatusValue, setEditingStatusValue] = useState('completed')
   const [rowStatusLoadingId, setRowStatusLoadingId] = useState(null)
+  const [qrScanPayload, setQrScanPayload] = useState('')
+  const [qrScanLoading, setQrScanLoading] = useState(false)
+  const [qrScanError, setQrScanError] = useState('')
+  const [qrScanSuccess, setQrScanSuccess] = useState('')
+  const [qrPreviewLoading, setQrPreviewLoading] = useState(false)
+  const [qrPreviewReservation, setQrPreviewReservation] = useState(null)
+  const [qrPreviewError, setQrPreviewError] = useState('')
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [scannerError, setScannerError] = useState('')
+  const [scannerReady, setScannerReady] = useState(false)
+  const scannerVideoRef = useRef(null)
+  const scannerStreamRef = useRef(null)
+  const scannerFrameRef = useRef(null)
+  const scannerDetectorRef = useRef(null)
+  const scannerCanvasRef = useRef(null)
 
   const addPath = user?.role === 'stagiaire' ? '/stagiaire/home' : '/admin/reservations/new'
   const isMonitor = user?.role === 'monitor'
@@ -38,8 +57,22 @@ export default function ReservationsPage() {
   }, [dispatch])
 
   const rows = useMemo(
-    () =>
-      reservations.map((reservation) => {
+    () => {
+      const now = new Date()
+      const scopedReservations = user?.role === 'stagiaire'
+        ? reservations.filter((reservation) => new Date(reservation.ends_at) > now)
+        : reservations
+
+      return scopedReservations.map((reservation) => {
+        const startsAt = new Date(reservation.starts_at)
+        const endsAt = new Date(reservation.ends_at)
+
+        const formatTime = (dateValue) => dateValue.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        })
+
         const nom = reservation.first_name || reservation.student_name?.split(' ')[0] || '-'
         const prenom = reservation.last_name || reservation.student_name?.split(' ').slice(1).join(' ') || '-'
         return {
@@ -49,11 +82,12 @@ export default function ReservationsPage() {
           code: reservation.reservation_code ?? '-------',
           ownerName: reservation.creator?.name ?? '-',
           terrainLabel: reservation.terrain?.name ?? reservation.terrain_id,
-          dateLabel: new Date(reservation.starts_at).toLocaleDateString(),
-          timeLabel: `${new Date(reservation.starts_at).toLocaleTimeString()} - ${new Date(reservation.ends_at).toLocaleTimeString()}`,
+          dateLabel: startsAt.toLocaleDateString(),
+          timeLabel: `${formatTime(startsAt)} - ${formatTime(endsAt)}`,
         }
-      }),
-    [reservations],
+      })
+    },
+    [reservations, user?.role],
   )
 
   const getStatusBadgeClass = (status) => {
@@ -100,6 +134,30 @@ export default function ReservationsPage() {
     [rows],
   )
 
+  const visibleRows = useMemo(() => {
+    if (user?.role === 'stagiaire') {
+      const now = new Date()
+      return rows.filter((reservation) => {
+        const isExpired = new Date(reservation.ends_at) <= now
+        const isHiddenStatus = reservation.status === 'cancelled' || reservation.status === 'completed'
+        return !isExpired && !isHiddenStatus
+      })
+    }
+
+    return rows
+  }, [rows, user?.role])
+
+  const canCancelSelectedReservation = useMemo(() => {
+    if (!selectedReservation) {
+      return false
+    }
+
+    const isExpired = new Date(selectedReservation.ends_at) <= new Date()
+    const isBlockedStatus = ['completed', 'cancelled', 'rejected'].includes(String(selectedReservation.status || ''))
+
+    return !isExpired && !isBlockedStatus
+  }, [selectedReservation])
+
   const submitStatusFromForm = async () => {
     const rawValue = statusReservationId.trim()
 
@@ -143,6 +201,295 @@ export default function ReservationsPage() {
     await dispatch(fetchReservations())
   }
 
+  const loadReservationFromQrPayload = async (rawPayload) => {
+    const payload = String(rawPayload || '').trim()
+    setQrScanError('')
+    setQrScanSuccess('')
+
+    if (!payload) {
+      setQrScanError(t('reservationIdInvalid'))
+      return
+    }
+
+    setQrPreviewReservation(null)
+    setQrPreviewError('')
+    setQrPreviewLoading(true)
+
+    const extractedCode = (() => {
+      const normalized = payload.toUpperCase().trim()
+      const prefixedMatch = normalized.match(/\bRES[-_ ]?(\d{5})\b/)
+
+      if (prefixedMatch?.[1]) {
+        return prefixedMatch[1]
+      }
+
+      const plainMatch = normalized.match(/\b(\d{5})\b/)
+      return plainMatch?.[1] || null
+    })()
+
+    if (!extractedCode) {
+      setQrPreviewLoading(false)
+      setQrPreviewError(t('reservationIdInvalid'))
+      return
+    }
+
+    try {
+      const { data } = await api.get(`/reservations/code/${extractedCode}`)
+      const reservation = data?.reservation
+
+      if (!reservation) {
+        setQrPreviewError(t('reservationNotFound'))
+        return
+      }
+
+      const startsAt = reservation?.starts_at ? new Date(reservation.starts_at) : null
+      const endsAt = reservation?.ends_at ? new Date(reservation.ends_at) : null
+      const ownerName = reservation?.creator?.name || reservation?.student_name || '-'
+
+      setQrPreviewReservation({
+        id: reservation.id,
+        code: reservation.reservation_code || extractedCode,
+        ownerName,
+        terrainLabel: reservation?.terrain?.name || reservation?.terrain_id || '-',
+        dateLabel: startsAt ? startsAt.toLocaleDateString() : '-',
+        timeLabel: startsAt && endsAt
+          ? `${startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${endsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+          : '-',
+        status: reservation.status || 'pending',
+      })
+    } catch (error) {
+      const validationError = error?.response?.data?.errors
+      const firstValidation = validationError ? Object.values(validationError)[0]?.[0] : null
+      setQrPreviewError(firstValidation || error?.response?.data?.message || t('reservationNotFound'))
+    } finally {
+      setQrPreviewLoading(false)
+    }
+  }
+
+  const submitQrScanConfirmation = async (event) => {
+    if (event?.preventDefault) {
+      event.preventDefault()
+    }
+
+    await loadReservationFromQrPayload(qrScanPayload)
+  }
+
+  const completeReservationFromQrPayload = useCallback(async (rawPayload) => {
+    const payload = String(rawPayload || '').trim()
+    setQrScanError('')
+    setQrScanSuccess('')
+
+    if (!payload) {
+      setQrScanError(t('reservationIdInvalid'))
+      return
+    }
+
+    const extractedCode = (() => {
+      const normalized = payload.toUpperCase().trim()
+      const prefixedMatch = normalized.match(/\bRES[-_ ]?(\d{5})\b/)
+
+      if (prefixedMatch?.[1]) {
+        return prefixedMatch[1]
+      }
+
+      const plainMatch = normalized.match(/\b(\d{5})\b/)
+      return plainMatch?.[1] || null
+    })()
+
+    if (!extractedCode) {
+      setQrScanError(t('reservationIdInvalid'))
+      return
+    }
+
+    setQrScanLoading(true)
+
+    try {
+      const { data } = await api.get(`/reservations/code/${extractedCode}`)
+      const reservation = data?.reservation
+
+      if (!reservation?.id) {
+        setQrScanError(t('reservationNotFound'))
+        return
+      }
+
+      await dispatch(updateReservationStatus({ id: reservation.id, status: 'completed' })).unwrap()
+      setQrScanSuccess(t('qrCompleteSuccess', { code: extractedCode }))
+      await dispatch(fetchReservations())
+    } catch (error) {
+      const validationError = error?.response?.data?.errors
+      const firstValidation = validationError ? Object.values(validationError)[0]?.[0] : null
+      setQrScanError(firstValidation || error?.response?.data?.message || t('qrCompleteFailed'))
+    } finally {
+      setQrScanLoading(false)
+    }
+  }, [dispatch, t])
+
+  const confirmPreviewReservation = async () => {
+    if (!qrPreviewReservation?.code) {
+      setQrScanError(t('reservationIdInvalid'))
+      return
+    }
+
+    setQrScanError('')
+    setQrScanSuccess('')
+    setQrScanLoading(true)
+
+    try {
+      const { data } = await api.post('/reservations/confirm-by-qr', {
+        reservation_code: qrPreviewReservation.code,
+      })
+
+      setQrScanSuccess(t('qrCompleteSuccess', { code: data?.reservation_code || qrPreviewReservation.code }))
+      setQrPreviewReservation((prev) => (prev ? { ...prev, status: data?.status || 'completed' } : prev))
+      await dispatch(fetchReservations())
+    } catch (error) {
+      const validationError = error?.response?.data?.errors
+      const firstValidation = validationError ? Object.values(validationError)[0]?.[0] : null
+      setQrScanError(firstValidation || error?.response?.data?.message || t('qrCompleteFailed'))
+    } finally {
+      setQrScanLoading(false)
+    }
+  }
+
+  const stopScanner = useCallback(() => {
+    if (scannerFrameRef.current) {
+      cancelAnimationFrame(scannerFrameRef.current)
+      scannerFrameRef.current = null
+    }
+
+    if (scannerStreamRef.current) {
+      scannerStreamRef.current.getTracks().forEach((track) => track.stop())
+      scannerStreamRef.current = null
+    }
+
+    scannerDetectorRef.current = null
+    setScannerReady(false)
+  }, [])
+
+  const handleScannerDetected = useCallback((rawValue) => {
+    const payload = String(rawValue || '').trim()
+
+    if (!payload) {
+      return
+    }
+
+    setQrScanPayload(payload)
+    setScannerOpen(false)
+    stopScanner()
+
+    completeReservationFromQrPayload(payload)
+  }, [completeReservationFromQrPayload, stopScanner])
+
+  const startScanner = useCallback(async () => {
+    setScannerError('')
+
+    if (!window.isSecureContext) {
+      setScannerError(t('scannerSecureContextRequired'))
+      return
+    }
+
+    if (!('mediaDevices' in navigator) || !navigator.mediaDevices?.getUserMedia) {
+      setScannerError(t('scannerNotSupported'))
+      return
+    }
+
+    if ('BarcodeDetector' in window) {
+      try {
+        scannerDetectorRef.current = new window.BarcodeDetector({ formats: ['qr_code'] })
+      } catch {
+        scannerDetectorRef.current = null
+      }
+    } else {
+      scannerDetectorRef.current = null
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+        },
+      })
+
+      scannerStreamRef.current = stream
+
+      if (!scannerVideoRef.current) {
+        setScannerError(t('scannerStartFailed'))
+        return
+      }
+
+      scannerVideoRef.current.srcObject = stream
+      await scannerVideoRef.current.play()
+      setScannerReady(true)
+
+      const scanFrame = async () => {
+        if (!scannerOpen || !scannerVideoRef.current || !scannerDetectorRef.current) {
+          if (!scannerOpen || !scannerVideoRef.current) {
+            return
+          }
+        }
+
+        try {
+          if (scannerDetectorRef.current) {
+            const detections = await scannerDetectorRef.current.detect(scannerVideoRef.current)
+
+            if (detections.length > 0 && detections[0]?.rawValue) {
+              handleScannerDetected(detections[0].rawValue)
+              return
+            }
+          } else {
+            const video = scannerVideoRef.current
+            const width = video.videoWidth
+            const height = video.videoHeight
+
+            if (width > 0 && height > 0) {
+              if (!scannerCanvasRef.current) {
+                scannerCanvasRef.current = document.createElement('canvas')
+              }
+
+              const canvas = scannerCanvasRef.current
+              canvas.width = width
+              canvas.height = height
+              const context = canvas.getContext('2d', { willReadFrequently: true })
+
+              if (context) {
+                context.drawImage(video, 0, 0, width, height)
+                const imageData = context.getImageData(0, 0, width, height)
+                const decoded = jsQR(imageData.data, width, height)
+
+                if (decoded?.data) {
+                  handleScannerDetected(decoded.data)
+                  return
+                }
+              }
+            }
+          }
+        } catch {
+          setScannerError(t('scannerReadFailed'))
+        }
+
+        scannerFrameRef.current = window.requestAnimationFrame(scanFrame)
+      }
+
+      scannerFrameRef.current = window.requestAnimationFrame(scanFrame)
+    } catch {
+      stopScanner()
+      setScannerError(t('scannerPermissionDenied'))
+    }
+  }, [handleScannerDetected, scannerOpen, stopScanner, t])
+
+  useEffect(() => {
+    if (!scannerOpen) {
+      stopScanner()
+      return
+    }
+
+    startScanner()
+
+    return () => {
+      stopScanner()
+    }
+  }, [scannerOpen, startScanner, stopScanner])
+
   if (isMonitor) {
     return (
       <section className="reservations-management">
@@ -152,39 +499,61 @@ export default function ReservationsPage() {
 
         <article className="reservation-audit-card">
           <div className="reservation-panel-head">
-            <h3>{t('reservationStatusFormTitle')}</h3>
-          </div>
-
-          <div className="reservation-checker-row">
-            <input
-              type="text"
-              value={statusReservationId}
-              onChange={(e) => setStatusReservationId(e.target.value)}
-              placeholder={t('reservationIdPlaceholder')}
-              className="reservation-checker-input"
-            />
-
-            <select
-              value={statusSelection}
-              onChange={(e) => setStatusSelection(e.target.value)}
-              className="reservation-checker-input"
-            >
-              <option value="completed">{t('statusCompleted')}</option>
-              <option value="cancelled">{t('statusCancelled')}</option>
-            </select>
-
+            <h3>{t('qrScanTitle')}</h3>
             <button
               type="button"
-              className="reservation-add-btn"
-              onClick={submitStatusFromForm}
-              disabled={statusFormLoading}
+              className="reservation-qr-scan-trigger"
+              onClick={() => {
+                setScannerError('')
+                setScannerOpen(true)
+              }}
+              title={t('openScanner')}
+              aria-label={t('openScanner')}
             >
-              {statusFormLoading ? t('saving') : t('confirmStatusChange')}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+                <path d="M4 8V6a2 2 0 0 1 2-2h2" />
+                <path d="M20 8V6a2 2 0 0 0-2-2h-2" />
+                <path d="M4 16v2a2 2 0 0 0 2 2h2" />
+                <path d="M20 16v2a2 2 0 0 1-2 2h-2" />
+                <rect x="7" y="10" width="10" height="4" rx="1" />
+              </svg>
             </button>
           </div>
 
-          {statusFormError ? <p className="reservation-slot-hint">{statusFormError}</p> : null}
+          <p className="reservation-checker-hint">{t('qrScanHint')}</p>
+
+          {qrScanLoading ? <p className="reservation-checker-hint">{t('saving')}</p> : null}
+
+          {qrScanError ? <p className="reservation-slot-hint">{qrScanError}</p> : null}
+          {qrScanSuccess ? <p className="reservation-checker-hint">{qrScanSuccess}</p> : null}
         </article>
+
+        {scannerOpen ? (
+          <div className="reservation-scanner-backdrop" role="dialog" aria-modal="true" aria-label={t('qrScanTitle')}>
+            <article className="reservation-scanner-modal">
+              <div className="reservation-panel-head">
+                <h3>{t('qrScanTitle')}</h3>
+                <button
+                  type="button"
+                  className="reservation-close-btn"
+                  onClick={() => setScannerOpen(false)}
+                >
+                  {t('close')}
+                </button>
+              </div>
+
+              <p className="reservation-checker-hint">{t('scannerHint')}</p>
+
+              <div className="reservation-scanner-video-wrap">
+                <video ref={scannerVideoRef} className="reservation-scanner-video" autoPlay playsInline muted />
+                <div className="reservation-scanner-target" aria-hidden />
+              </div>
+
+              {!scannerReady && !scannerError ? <p className="reservation-checker-hint">{t('scannerStarting')}</p> : null}
+              {scannerError ? <p className="reservation-slot-hint">{scannerError}</p> : null}
+            </article>
+          </div>
+        ) : null}
 
         <div className="table-wrap">
           <table>
@@ -344,30 +713,20 @@ export default function ReservationsPage() {
         <table>
           <thead>
             <tr>
-              <th>{t('firstName')}</th>
-              <th>{t('lastName')}</th>
-              <th>{t('terrain')}</th>
-              <th>{t('date')}</th>
-              <th>{t('time')}</th>
-              <th>{t('status')}</th>
-              <th>{t('code')}</th>
-              <th>{t('reservedBy')}</th>
+              <th>{t('reservationNumber')}</th>
+              <th className="hide-on-mobile">{t('terrain')}</th>
+              <th className="hide-on-mobile">{t('time')}</th>
               <th>{t('actions')}</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((reservation) => (
+            {visibleRows.map((reservation) => (
               <tr key={reservation.id}>
-                <td>{reservation.nom}</td>
-                <td>{reservation.prenom}</td>
-                <td>{reservation.terrainLabel}</td>
-                <td>{reservation.dateLabel}</td>
-                <td>{reservation.timeLabel}</td>
-                <td>
-                  <span className={getStatusBadgeClass(reservation.status)}>{getStatusLabel(reservation.status)}</span>
+                <td className="reservation-code-cell">
+                  <strong>RES-{reservation.code}</strong>
                 </td>
-                <td>{reservation.code}</td>
-                <td>{reservation.ownerName}</td>
+                <td className="hide-on-mobile">{reservation.terrainLabel}</td>
+                <td className="hide-on-mobile">{reservation.timeLabel}</td>
                 <td className="reservation-actions-cell">
                   <button
                     type="button"
@@ -386,8 +745,9 @@ export default function ReservationsPage() {
                       setStudentIdToAdd('')
                       setAddPlayerError('')
                     }}
+                    title={t('details')}
                   >
-                    {selectedReservation?.id === reservation.id ? t('closeDetails') : t('details')}
+                    {t('details')}
                   </button>
                   <button
                     type="button"
@@ -408,8 +768,9 @@ export default function ReservationsPage() {
                       setPlayersList([])
                       loadPlayersByCode(reservation)
                     }}
+                    title={t('seePlayers')}
                   >
-                    {playersSourceReservation?.id === reservation.id ? t('closePlayers') : t('seePlayers')}
+                    {t('seePlayers')}
                   </button>
                   <button
                     type="button"
@@ -428,27 +789,28 @@ export default function ReservationsPage() {
                       setStudentIdToAdd('')
                       setAddPlayerError('')
                     }}
+                    title={t('addPlayer')}
                   >
-                    {addPlayerReservation?.id === reservation.id ? t('close') : t('addPlayer')}
+                    {t('addPlayer')}
                   </button>
                   {user?.role === 'admin' ? (
                     <button
                       type="button"
-                      className="reservation-icon-btn"
+                      className="reservation-action-btn"
                       onClick={() => navigate(`/admin/reservations/${reservation.id}/edit`)}
                       title={t('edit')}
                     >
-                      ✎
+                      {t('edit')}
                     </button>
                   ) : null}
                   {user?.role === 'admin' ? (
                     <button
                       type="button"
-                      className="reservation-icon-btn danger"
+                      className="reservation-action-btn danger"
                       onClick={() => dispatch(deleteReservation(reservation.id))}
                       title={t('delete')}
                     >
-                      🗑
+                      {t('delete')}
                     </button>
                   ) : null}
                 </td>
@@ -459,78 +821,81 @@ export default function ReservationsPage() {
       </div>
 
       {selectedReservation ? (
-        <article className="reservation-details-card">
+        <article className="reservation-details-card reservation-modal">
           <div className="reservation-panel-head">
-            <h3>Details Reservation</h3>
+            <h3>{t('details')}</h3>
             <button type="button" className="reservation-close-btn" onClick={() => setSelectedReservation(null)}>
-              {t('close')}
+              ✕
             </button>
           </div>
-          <div className="reservation-pass-card">
-            <div className="reservation-pass-top">
-              <div>
-                <span className="reservation-pass-label">{t('officialPass')}</span>
-                <h4>{selectedReservation.terrainLabel}</h4>
-                <p className="reservation-pass-sub">{t('cmcSportsComplex')}</p>
+
+          <div className="reservation-modal-content">
+            <div className="reservation-modal-section">
+              <div className="modal-field">
+                <span>{t('reservedBy')}</span>
+                <strong>{selectedReservation.ownerName}</strong>
               </div>
-              <div className="reservation-pass-id-wrap">
-                <span className="reservation-pass-label">{t('referenceCode')}</span>
-                <strong>{selectedReservation.code}</strong>
-                <small>ID #{selectedReservation.id}</small>
+              <div className="modal-field">
+                <span>{t('reservationId')}</span>
+                <strong>#{selectedReservation.id}</strong>
+              </div>
+              <div className="modal-field">
+                <span>{t('reservationNumber')}</span>
+                <strong className="reservation-id-code">RES-{selectedReservation.code || String(selectedReservation.id).padStart(5, '0')}</strong>
               </div>
             </div>
 
-            <div className="reservation-pass-body">
-              <div className="reservation-pass-data">
-                <p>
-                  <span>{t('studentName')}</span>
-                  <strong>{`${selectedReservation.nom} ${selectedReservation.prenom}`.trim()}</strong>
-                </p>
-                <p>
-                  <span>CIN</span>
-                  <strong>{selectedReservation.cin || '-'}</strong>
-                </p>
-                <p>
-                  <span>{t('className')}</span>
-                  <strong>{selectedReservation.class_name || '-'}</strong>
-                </p>
-                <p>
-                  <span>{t('dateAndTime')}</span>
-                  <strong>{selectedReservation.dateLabel}</strong>
-                  <em>{selectedReservation.timeLabel}</em>
-                </p>
-                <p>
-                  <span>{t('status')}</span>
-                  <strong className="reservation-pass-status">{getStatusLabel(selectedReservation.status)}</strong>
-                </p>
+            <div className="reservation-qr-section">
+              <div className="reservation-qr-container">
+                <QRCodeSVG
+                  value={`RES-${selectedReservation.code || String(selectedReservation.id).padStart(5, '0')}`}
+                  size={180}
+                  level="H"
+                  includeMargin={true}
+                />
               </div>
-
-              <div className="reservation-pass-media">
-                {selectedReservation.terrain?.image_url ? (
-                  <img
-                    src={selectedReservation.terrain.image_url}
-                    alt={selectedReservation.terrainLabel}
-                    className="reservation-pass-terrain-img"
-                  />
-                ) : (
-                  <div className="reservation-pass-media-fallback">{t('noTerrainPhoto')}</div>
-                )}
+              <div className="reservation-qr-info">
+                <strong>QR Code</strong>
+                <span>{t('reservationNumber')}</span>
               </div>
             </div>
 
-            <div className="reservation-pass-footer">
-              <p>
-                <strong>{t('filiere')}:</strong> {selectedReservation.filiere || '-'}
-              </p>
-              <p>
-                <strong>{t('email')}:</strong> {selectedReservation.student_email}
-              </p>
-              <p>
-                <strong>{t('reservedBy')}:</strong> {selectedReservation.ownerName}
-              </p>
+            <div className="reservation-modal-actions">
+              {canCancelSelectedReservation ? (
+                <button
+                  type="button"
+                  className="reservation-btn-cancel"
+                  disabled={cancelingReservation}
+                  onClick={async () => {
+                    if (!selectedReservation || cancelingReservation) {
+                      return
+                    }
+
+                    setCancelingReservation(true)
+
+                    try {
+                      if (user?.role === 'stagiaire') {
+                        await dispatch(cancelOwnReservation(selectedReservation.id)).unwrap()
+                      } else if (user?.role === 'admin' || user?.role === 'monitor') {
+                        await dispatch(updateReservationStatus({ id: selectedReservation.id, status: 'cancelled' })).unwrap()
+                      } else {
+                        await dispatch(deleteReservation(selectedReservation.id)).unwrap()
+                      }
+
+                      setSelectedReservation(null)
+                      dispatch(fetchReservations())
+                    } catch (error) {
+                      window.alert(t('statusChangeFailed'))
+                    } finally {
+                      setCancelingReservation(false)
+                    }
+                  }}
+                >
+                  {cancelingReservation ? t('saving') : 'Annuler Reservation'}
+                </button>
+              ) : null}
             </div>
           </div>
-
         </article>
       ) : null}
 
@@ -628,7 +993,41 @@ export default function ReservationsPage() {
                     <td>{`${player.first_name || player.student_name?.split(' ')[0] || ''} ${player.last_name || player.student_name?.split(' ').slice(1).join(' ') || ''}`.trim()}</td>
                     <td>{player.class_name || '-'}</td>
                     <td>{player.cin || '-'}</td>
-                    <td>{index === 0 ? t('mainReservationOwner') : t('associatedPlayer')}</td>
+                    <td>
+                      {index === 0 ? (
+                        t('mainReservationOwner')
+                      ) : (
+                        <button
+                          type="button"
+                          className="reservation-action-btn danger"
+                          disabled={removingPlayerId === player.id}
+                          onClick={async () => {
+                            if (!playersSourceReservation?.id || removingPlayerId === player.id) {
+                              return
+                            }
+
+                            setRemovingPlayerId(player.id)
+                            setPlayersError('')
+
+                            try {
+                              await dispatch(removeReservationPlayer({
+                                reservationId: playersSourceReservation.id,
+                                playerId: player.id,
+                              })).unwrap()
+
+                              await loadPlayersByCode(playersSourceReservation)
+                              dispatch(fetchReservations())
+                            } catch (error) {
+                              setPlayersError(error?.message || 'Impossible de supprimer ce joueur.')
+                            } finally {
+                              setRemovingPlayerId(null)
+                            }
+                          }}
+                        >
+                          {removingPlayerId === player.id ? t('saving') : t('delete')}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

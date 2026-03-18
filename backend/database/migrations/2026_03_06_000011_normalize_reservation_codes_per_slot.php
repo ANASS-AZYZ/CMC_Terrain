@@ -46,6 +46,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        // No rollback: historical reservation codes intentionally normalized by slot.
+        
     }
 };

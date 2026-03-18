@@ -20,6 +20,11 @@ export default function AdminProfilePage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [form, setForm] = useState(defaultForm)
+  const [passwordVisibility, setPasswordVisibility] = useState({
+    current: false,
+    next: false,
+    confirm: false,
+  })
   const [profileForm, setProfileForm] = useState({
     first_name: '',
     last_name: '',
@@ -206,35 +211,107 @@ export default function AdminProfilePage() {
 
           <label>
             {t('currentPassword')}
-            <input
-              type="password"
-              value={form.current_password}
-              onChange={(e) => onChange('current_password', e.target.value)}
-              minLength={6}
-              required
-            />
+            <div className="profile-password-input-wrap">
+              <input
+                type={passwordVisibility.current ? 'text' : 'password'}
+                value={form.current_password}
+                onChange={(e) => onChange('current_password', e.target.value)}
+                minLength={6}
+                required
+              />
+              {form.current_password ? (
+                <button
+                  type="button"
+                  className="profile-password-toggle"
+                  aria-label={passwordVisibility.current ? 'Hide password' : 'Show password'}
+                  onClick={() => setPasswordVisibility((prev) => ({ ...prev, current: !prev.current }))}
+                >
+                  {passwordVisibility.current ? (
+                    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 3l18 18" />
+                      <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                      <path d="M9.9 5.2A9.8 9.8 0 0 1 12 5c5.2 0 9.3 4.8 10 6-.4.7-1.8 2.8-4.2 4.5" />
+                      <path d="M6.2 6.2C3.9 7.8 2.4 10 2 11c.6 1.2 4.7 6 10 6 1 0 2-.2 2.8-.5" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              ) : null}
+            </div>
           </label>
 
           <label>
             {t('newPassword')}
-            <input
-              type="password"
-              value={form.new_password}
-              onChange={(e) => onChange('new_password', e.target.value)}
-              minLength={8}
-              required
-            />
+            <div className="profile-password-input-wrap">
+              <input
+                type={passwordVisibility.next ? 'text' : 'password'}
+                value={form.new_password}
+                onChange={(e) => onChange('new_password', e.target.value)}
+                minLength={8}
+                required
+              />
+              {form.new_password ? (
+                <button
+                  type="button"
+                  className="profile-password-toggle"
+                  aria-label={passwordVisibility.next ? 'Hide password' : 'Show password'}
+                  onClick={() => setPasswordVisibility((prev) => ({ ...prev, next: !prev.next }))}
+                >
+                  {passwordVisibility.next ? (
+                    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 3l18 18" />
+                      <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                      <path d="M9.9 5.2A9.8 9.8 0 0 1 12 5c5.2 0 9.3 4.8 10 6-.4.7-1.8 2.8-4.2 4.5" />
+                      <path d="M6.2 6.2C3.9 7.8 2.4 10 2 11c.6 1.2 4.7 6 10 6 1 0 2-.2 2.8-.5" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              ) : null}
+            </div>
           </label>
 
           <label>
             {t('confirmPassword')}
-            <input
-              type="password"
-              value={form.new_password_confirmation}
-              onChange={(e) => onChange('new_password_confirmation', e.target.value)}
-              minLength={8}
-              required
-            />
+            <div className="profile-password-input-wrap">
+              <input
+                type={passwordVisibility.confirm ? 'text' : 'password'}
+                value={form.new_password_confirmation}
+                onChange={(e) => onChange('new_password_confirmation', e.target.value)}
+                minLength={8}
+                required
+              />
+              {form.new_password_confirmation ? (
+                <button
+                  type="button"
+                  className="profile-password-toggle"
+                  aria-label={passwordVisibility.confirm ? 'Hide password' : 'Show password'}
+                  onClick={() => setPasswordVisibility((prev) => ({ ...prev, confirm: !prev.confirm }))}
+                >
+                  {passwordVisibility.confirm ? (
+                    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 3l18 18" />
+                      <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                      <path d="M9.9 5.2A9.8 9.8 0 0 1 12 5c5.2 0 9.3 4.8 10 6-.4.7-1.8 2.8-4.2 4.5" />
+                      <path d="M6.2 6.2C3.9 7.8 2.4 10 2 11c.6 1.2 4.7 6 10 6 1 0 2-.2 2.8-.5" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              ) : null}
+            </div>
           </label>
 
           {error ? <p className="profile-msg error">{error}</p> : null}

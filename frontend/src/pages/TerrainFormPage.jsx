@@ -6,7 +6,6 @@ import { createTerrain, fetchTerrains, updateTerrain } from '../features/terrain
 
 const initialForm = {
   name: '',
-  image_url: '',
   type: 'Football 11',
   location: 'CMC Campus',
   capacity: 10,
@@ -23,7 +22,9 @@ export default function TerrainFormPage() {
   const isEdit = Boolean(terrainId)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(initialForm)
-  const [imageFile, setImageFile] = useState(null)
+  const [existingImages, setExistingImages] = useState([])
+  const [newImageFiles, setNewImageFiles] = useState([])
+  const [newImagePreviews, setNewImagePreviews] = useState([])
 
   const normalizeTerrainType = (value) => {
     const normalized = String(value || '').trim().toLowerCase()
@@ -41,6 +42,19 @@ export default function TerrainFormPage() {
     [terrains, terrainId],
   )
 
+  const currentTerrainImages = useMemo(() => {
+    if (!currentTerrain) return []
+
+    const gallery = Array.isArray(currentTerrain.image_urls) ? currentTerrain.image_urls : []
+    const merged = [...gallery]
+
+    if (currentTerrain.image_url) {
+      merged.unshift(currentTerrain.image_url)
+    }
+
+    return Array.from(new Set(merged.filter(Boolean)))
+  }, [currentTerrain])
+
   useEffect(() => {
     dispatch(fetchTerrains())
   }, [dispatch])
@@ -50,17 +64,48 @@ export default function TerrainFormPage() {
 
     setForm({
       name: currentTerrain.name ?? '',
-      image_url: currentTerrain.image_url ?? '',
       type: normalizeTerrainType(currentTerrain.type),
       location: currentTerrain.location ?? 'CMC Campus',
       capacity: Number(currentTerrain.capacity ?? 10),
       status: currentTerrain.status === 'maintenance' ? 'inactive' : currentTerrain.status ?? 'active',
       online_booking: Boolean(currentTerrain.online_booking),
     })
-  }, [currentTerrain, isEdit])
+    setExistingImages(currentTerrainImages)
+    setNewImageFiles([])
+  }, [currentTerrain, currentTerrainImages, isEdit])
+
+  useEffect(() => {
+    const previews = newImageFiles.map((file) => ({
+      key: `${file.name}-${file.lastModified}-${file.size}`,
+      url: URL.createObjectURL(file),
+      file,
+    }))
+
+    setNewImagePreviews(previews)
+
+    return () => {
+      previews.forEach((preview) => URL.revokeObjectURL(preview.url))
+    }
+  }, [newImageFiles])
 
   const onChange = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const onImageFilesChange = (event) => {
+    const selectedFiles = Array.from(event.target.files || [])
+    if (selectedFiles.length === 0) return
+
+    setNewImageFiles((prev) => [...prev, ...selectedFiles].slice(0, 10))
+    event.target.value = ''
+  }
+
+  const removeExistingImage = (urlToRemove) => {
+    setExistingImages((prev) => prev.filter((url) => url !== urlToRemove))
+  }
+
+  const removeNewImage = (indexToRemove) => {
+    setNewImageFiles((prev) => prev.filter((_, index) => index !== indexToRemove))
   }
 
   const onSubmit = async (e) => {
@@ -74,10 +119,10 @@ export default function TerrainFormPage() {
     payload.append('capacity', String(Number(form.capacity)))
     payload.append('status', form.status)
     payload.append('online_booking', form.online_booking ? '1' : '0')
+    payload.append('replace_images', '1')
 
-    if (imageFile) {
-      payload.append('image', imageFile)
-    }
+    existingImages.forEach((url) => payload.append('image_urls[]', url))
+    newImageFiles.forEach((file) => payload.append('images[]', file))
 
     if (isEdit) {
       await dispatch(updateTerrain({ id: Number(terrainId), payload }))
@@ -104,14 +149,39 @@ export default function TerrainFormPage() {
 
         <label>
           {t('terrainImageFromPc')}
-          <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] ?? null)} />
+          <input type="file" accept="image/*" multiple onChange={onImageFilesChange} />
         </label>
 
-        {currentTerrain?.image_url ? (
-          <label>
-            {t('currentImage')}
-            <img src={currentTerrain.image_url} alt={currentTerrain.name} className="terrain-form-preview" />
-          </label>
+        {isEdit && existingImages.length > 0 ? (
+          <div className="terrain-form-gallery">
+            <p className="terrain-form-gallery-title">{t('currentImage')}</p>
+            <div className="terrain-form-gallery-grid">
+              {existingImages.map((imageUrl) => (
+                <div key={imageUrl} className="terrain-form-gallery-item">
+                  <img src={imageUrl} alt={currentTerrain?.name || 'Terrain'} className="terrain-form-preview" />
+                  <button type="button" className="terrain-gallery-remove-btn" onClick={() => removeExistingImage(imageUrl)}>
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {newImageFiles.length > 0 ? (
+          <div className="terrain-form-gallery">
+            <p className="terrain-form-gallery-title">New Images</p>
+            <div className="terrain-form-gallery-grid">
+              {newImagePreviews.map((preview, index) => (
+                <div key={preview.key} className="terrain-form-gallery-item">
+                  <img src={preview.url} alt={preview.file.name} className="terrain-form-preview" />
+                  <button type="button" className="terrain-gallery-remove-btn" onClick={() => removeNewImage(index)}>
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         ) : null}
 
         <label>

@@ -88,6 +88,7 @@ export default function StagiaireAvailabilityPage() {
 
       const overlap = reservations.some((reservation) => {
         if (Number(reservation.terrain_id) !== Number(terrainId)) return false
+        if (['cancelled', 'rejected', 'completed'].includes(String(reservation.status || ''))) return false
 
         const starts = new Date(reservation.starts_at)
         const ends = new Date(reservation.ends_at)
@@ -182,7 +183,10 @@ export default function StagiaireAvailabilityPage() {
     setReserving(false)
 
     if (createReservation.rejected.match(result)) {
-      setReserveError(t('reservationFailedSlotTaken'))
+      const apiMessage = typeof result.payload === 'string' && result.payload.trim()
+        ? result.payload
+        : null
+      setReserveError(apiMessage || t('reservationFailedSlotTaken'))
       return
     }
 

@@ -14,6 +14,8 @@ export default function ForgotPasswordPage() {
   const [resetToken, setResetToken] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -168,26 +170,74 @@ export default function ForgotPasswordPage() {
           <form className="grid gap-4" onSubmit={resetPassword}>
             <label className="font-bold text-sm text-[#27384a]">
               Nouveau Mot De Passe
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                minLength={8}
-                required
-                className="mt-2 w-full border border-[#c9d8e7] rounded-[12px] px-4 py-3 bg-[#f9fcff] text-[#22384d] outline-none focus:border-[#5aa5d7] focus:ring-2 focus:ring-[#5aa5d733]"
-              />
+              <div className="relative mt-2">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  minLength={8}
+                  required
+                  className="w-full border border-[#c9d8e7] rounded-[12px] px-4 pr-11 py-3 bg-[#f9fcff] text-[#22384d] outline-none focus:border-[#5aa5d7] focus:ring-2 focus:ring-[#5aa5d733]"
+                />
+                {newPassword ? (
+                  <button
+                    type="button"
+                    aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                    onClick={() => setShowNewPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-3 flex items-center justify-center p-0 bg-transparent text-[#22384d]"
+                  >
+                    {showNewPassword ? (
+                      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M3 3l18 18" />
+                        <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                        <path d="M9.9 5.2A9.8 9.8 0 0 1 12 5c5.2 0 9.3 4.8 10 6-.4.7-1.8 2.8-4.2 4.5" />
+                        <path d="M6.2 6.2C3.9 7.8 2.4 10 2 11c.6 1.2 4.7 6 10 6 1 0 2-.2 2.8-.5" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    )}
+                  </button>
+                ) : null}
+              </div>
             </label>
 
             <label className="font-bold text-sm text-[#27384a]">
               Confirmer Mot De Passe
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                minLength={8}
-                required
-                className="mt-2 w-full border border-[#c9d8e7] rounded-[12px] px-4 py-3 bg-[#f9fcff] text-[#22384d] outline-none focus:border-[#5aa5d7] focus:ring-2 focus:ring-[#5aa5d733]"
-              />
+              <div className="relative mt-2">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  minLength={8}
+                  required
+                  className="w-full border border-[#c9d8e7] rounded-[12px] px-4 pr-11 py-3 bg-[#f9fcff] text-[#22384d] outline-none focus:border-[#5aa5d7] focus:ring-2 focus:ring-[#5aa5d733]"
+                />
+                {confirmPassword ? (
+                  <button
+                    type="button"
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-3 flex items-center justify-center p-0 bg-transparent text-[#22384d]"
+                  >
+                    {showConfirmPassword ? (
+                      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M3 3l18 18" />
+                        <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                        <path d="M9.9 5.2A9.8 9.8 0 0 1 12 5c5.2 0 9.3 4.8 10 6-.4.7-1.8 2.8-4.2 4.5" />
+                        <path d="M6.2 6.2C3.9 7.8 2.4 10 2 11c.6 1.2 4.7 6 10 6 1 0 2-.2 2.8-.5" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    )}
+                  </button>
+                ) : null}
+              </div>
             </label>
 
             <button type="submit" disabled={loading} className="bg-[#5aa5d7] hover:bg-[#4d99cc] transition-colors text-white rounded-[12px] py-[12px] font-['Sora'] font-bold shadow-[0_10px_24px_rgba(59,140,197,0.28)] disabled:opacity-70 disabled:cursor-not-allowed">

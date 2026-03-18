@@ -20,6 +20,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false)
   const [verificationEmail, setVerificationEmail] = useState('')
   const [verificationCode, setVerificationCode] = useState('')
 
@@ -181,26 +183,74 @@ export default function RegisterPage() {
 
           <label className="font-bold text-sm text-[#27384a]">
             Mot de passe
-            <input
-              type="password"
-              value={form.password}
-              onChange={(e) => updateField('password', e.target.value)}
-              minLength={8}
-              required
-              className="mt-2 w-full border border-[#c9d8e7] rounded-[12px] px-4 py-3 bg-[#f9fcff] text-[#22384d] outline-none focus:border-[#5aa5d7] focus:ring-2 focus:ring-[#5aa5d733]"
-            />
+            <div className="relative mt-2">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={form.password}
+                onChange={(e) => updateField('password', e.target.value)}
+                minLength={8}
+                required
+                className="w-full border border-[#c9d8e7] rounded-[12px] px-4 pr-11 py-3 bg-[#f9fcff] text-[#22384d] outline-none focus:border-[#5aa5d7] focus:ring-2 focus:ring-[#5aa5d733]"
+              />
+              {form.password ? (
+                <button
+                  type="button"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-3 flex items-center justify-center p-0 bg-transparent text-[#22384d]"
+                >
+                  {showPassword ? (
+                    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 3l18 18" />
+                      <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                      <path d="M9.9 5.2A9.8 9.8 0 0 1 12 5c5.2 0 9.3 4.8 10 6-.4.7-1.8 2.8-4.2 4.5" />
+                      <path d="M6.2 6.2C3.9 7.8 2.4 10 2 11c.6 1.2 4.7 6 10 6 1 0 2-.2 2.8-.5" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              ) : null}
+            </div>
           </label>
 
           <label className="font-bold text-sm text-[#27384a]">
             Confirmer mot de passe
-            <input
-              type="password"
-              value={form.password_confirmation}
-              onChange={(e) => updateField('password_confirmation', e.target.value)}
-              minLength={8}
-              required
-              className="mt-2 w-full border border-[#c9d8e7] rounded-[12px] px-4 py-3 bg-[#f9fcff] text-[#22384d] outline-none focus:border-[#5aa5d7] focus:ring-2 focus:ring-[#5aa5d733]"
-            />
+            <div className="relative mt-2">
+              <input
+                type={showPasswordConfirmation ? 'text' : 'password'}
+                value={form.password_confirmation}
+                onChange={(e) => updateField('password_confirmation', e.target.value)}
+                minLength={8}
+                required
+                className="w-full border border-[#c9d8e7] rounded-[12px] px-4 pr-11 py-3 bg-[#f9fcff] text-[#22384d] outline-none focus:border-[#5aa5d7] focus:ring-2 focus:ring-[#5aa5d733]"
+              />
+              {form.password_confirmation ? (
+                <button
+                  type="button"
+                  aria-label={showPasswordConfirmation ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPasswordConfirmation((prev) => !prev)}
+                  className="absolute inset-y-0 right-3 flex items-center justify-center p-0 bg-transparent text-[#22384d]"
+                >
+                  {showPasswordConfirmation ? (
+                    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 3l18 18" />
+                      <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                      <path d="M9.9 5.2A9.8 9.8 0 0 1 12 5c5.2 0 9.3 4.8 10 6-.4.7-1.8 2.8-4.2 4.5" />
+                      <path d="M6.2 6.2C3.9 7.8 2.4 10 2 11c.6 1.2 4.7 6 10 6 1 0 2-.2 2.8-.5" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              ) : null}
+            </div>
           </label>
 
           <div className="md:col-span-2 grid gap-3 pt-2">

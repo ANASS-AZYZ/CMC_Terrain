@@ -19,6 +19,7 @@ export default function LoginPage({ forcedPortal = null }) {
   )
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(false)
   const [langOpen, setLangOpen] = useState(false)
   const langMenuRef = useRef(null)
@@ -53,7 +54,7 @@ export default function LoginPage({ forcedPortal = null }) {
 
   const submit = async (e) => {
     e.preventDefault()
-    await dispatch(loginThunk({ email, password, portal }))
+    await dispatch(loginThunk({ email: email.trim(), password, portal }))
   }
 
   const onLanguageChange = (lang) => {
@@ -218,13 +219,35 @@ export default function LoginPage({ forcedPortal = null }) {
             </div>
             <input
               id="password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className={`w-full border rounded-[8px] pl-10 pr-3 py-2.5 text-[15px] outline-none ${isDark ? 'border-[#35506d] bg-[#142235] text-[#e5effa] focus:border-[#79b9de]' : 'border-[#d5dce5] bg-[#f0f2f5] text-[#22384d] focus:border-[#96b7d3]'}`}
+              className={`w-full border rounded-[8px] pl-10 pr-11 py-2.5 text-[15px] outline-none ${isDark ? 'border-[#35506d] bg-[#142235] text-[#e5effa] focus:border-[#79b9de]' : 'border-[#d5dce5] bg-[#f0f2f5] text-[#22384d] focus:border-[#96b7d3]'}`}
             />
+            {password ? (
+              <button
+                type="button"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                onClick={() => setShowPassword((prev) => !prev)}
+                  className={`absolute inset-y-0 right-3 flex items-center justify-center p-0 bg-transparent ${isDark ? 'text-[#9fb4c8]' : 'text-[#23384d]'}`}
+              >
+                {showPassword ? (
+                  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 3l18 18" />
+                    <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                    <path d="M9.9 5.2A9.8 9.8 0 0 1 12 5c5.2 0 9.3 4.8 10 6-.4.7-1.8 2.8-4.2 4.5" />
+                    <path d="M6.2 6.2C3.9 7.8 2.4 10 2 11c.6 1.2 4.7 6 10 6 1 0 2-.2 2.8-.5" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            ) : null}
           </div>
 
           <label className={`flex items-center gap-2 text-sm ${isDark ? 'text-[#93acc5]' : 'text-[#6f8295]'}`}>

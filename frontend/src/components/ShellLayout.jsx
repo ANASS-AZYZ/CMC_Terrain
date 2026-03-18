@@ -82,6 +82,7 @@ export default function ShellLayout() {
   const isMonitor = user?.role === 'monitor'
   const [openLangMenu, setOpenLangMenu] = useState(false)
   const [openUserMenu, setOpenUserMenu] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const langMenuRef = useRef(null)
   const userMenuRef = useRef(null)
 
@@ -130,14 +131,31 @@ export default function ShellLayout() {
     return () => document.removeEventListener('click', onDocClick)
   }, [])
 
+  useEffect(() => {
+    setMobileSidebarOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    const onEsc = (event) => {
+      if (event.key === 'Escape') {
+        setMobileSidebarOpen(false)
+      }
+    }
+
+    document.addEventListener('keydown', onEsc)
+    return () => document.removeEventListener('keydown', onEsc)
+  }, [])
+
   const isDashboard = isAdmin ? location.pathname === '/admin/dashboard' : isMonitor ? location.pathname === '/monitor/reservations' : location.pathname === '/stagiaire/home'
   const isGroupSchedule = isAdmin ? location.pathname.startsWith('/admin/terrains') : isMonitor ? location.pathname === '/monitor/reservations' : location.pathname === '/stagiaire/my-reservations'
   const isSupport = !isAdmin && !isMonitor && location.pathname === '/stagiaire/contact-support'
+  const profilePath = isAdmin ? '/admin/profile' : isMonitor ? '/monitor/profile' : '/stagiaire/profile'
   const displayName = user?.name ?? (isAdmin ? 'Admin' : isMonitor ? 'Monitor' : 'User')
   const studentIdLabel = user?.student_id || (user?.id ? `STG${String(user.id).padStart(6, '0')}` : 'STG------')
 
   return (
-    <div className={isAdmin ? 'admin-shell' : 'admin-shell stagiaire-shell'}>
+    <div className={isAdmin ? `admin-shell ${mobileSidebarOpen ? 'mobile-sidebar-open' : ''}` : 'admin-shell stagiaire-shell'}>
+      {isAdmin ? <button type="button" className="admin-mobile-overlay" aria-label={t('close')} onClick={() => setMobileSidebarOpen(false)} /> : null}
       {isAdmin ? (
         <aside className="admin-sidebar">
         <div className="admin-brand">
@@ -186,6 +204,17 @@ export default function ShellLayout() {
       <main className="admin-main">
         <header className="admin-topbar">
           <div className="admin-top-brand">
+            {isAdmin ? (
+              <button
+                type="button"
+                className="admin-sidebar-toggle"
+                aria-label={mobileSidebarOpen ? t('close') : t('menu')}
+                aria-expanded={mobileSidebarOpen}
+                onClick={() => setMobileSidebarOpen((prev) => !prev)}
+              >
+                {mobileSidebarOpen ? '✕' : '☰'}
+              </button>
+            ) : null}
             <img
               src="/image.png"
               alt="OFPPT"
@@ -212,16 +241,6 @@ export default function ShellLayout() {
           </div>
 
           <div className="admin-top-actions">
-            {!isAdmin && !isMonitor ? <span className="student-id-chip">{t('studentId')}: {studentIdLabel}</span> : null}
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={() => dispatch(setTheme(theme === 'light' ? 'dark' : 'light'))}
-              title={theme === 'light' ? t('darkMode') : t('lightMode')}
-            >
-              {theme === 'light' ? '◐' : '☀'}
-            </button>
-
             <div className="lang-menu-wrap" ref={langMenuRef}>
               <button type="button" className="icon-btn" onClick={() => setOpenLangMenu((prev) => !prev)} title={language.toUpperCase()}>
                 🌐
@@ -251,6 +270,18 @@ export default function ShellLayout() {
             </div>
 
             <div className="user-menu-wrap" ref={userMenuRef}>
+              <div className="user-theme-switch" role="group" aria-label={t('darkMode')}>
+                <button
+                  type="button"
+                  className="theme-choice-btn active"
+                  title={theme === 'dark' ? t('lightMode') : t('darkMode')}
+                  aria-label={theme === 'dark' ? t('lightMode') : t('darkMode')}
+                  onClick={() => dispatch(setTheme(theme === 'dark' ? 'light' : 'dark'))}
+                >
+                  {theme === 'dark' ? '☀' : '🌙'}
+                </button>
+              </div>
+
               <button type="button" className="admin-user-chip" onClick={() => setOpenUserMenu((prev) => !prev)}>
                 {displayName}
                 <span aria-hidden>▾</span>
@@ -258,18 +289,41 @@ export default function ShellLayout() {
 
               {openUserMenu ? (
                 <div className="user-menu-list">
-                  {!isMonitor ? (
-                    <button
-                      type="button"
-                      className="user-menu-item"
-                      onClick={() => {
-                        setOpenUserMenu(false)
-                        navigate(isAdmin ? '/admin/profile' : '/stagiaire/profile')
-                      }}
-                    >
-                      {t('profile')}
-                    </button>
+                  {!isAdmin && !isMonitor ? (
+                    <div className="user-menu-meta">
+                      <span>{t('studentId')}</span>
+                      <strong>{studentIdLabel}</strong>
+                    </div>
                   ) : null}
+                  <div className="user-menu-lang">
+                    <span>{t('language')}</span>
+                    <div className="user-menu-lang-row">
+                      {[
+                        { code: 'fr', label: 'FR' },
+                        { code: 'en', label: 'EN' },
+                        { code: 'ar', label: 'AR' },
+                      ].map((lang) => (
+                        <button
+                          key={lang.code}
+                          type="button"
+                          className={language === lang.code ? 'user-menu-lang-btn active' : 'user-menu-lang-btn'}
+                          onClick={() => onLanguageChange(lang.code)}
+                        >
+                          {lang.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="user-menu-item"
+                    onClick={() => {
+                      setOpenUserMenu(false)
+                      navigate(profilePath)
+                    }}
+                  >
+                    {t('profile')}
+                  </button>
                   <button
                     type="button"
                     className="user-menu-item danger"
