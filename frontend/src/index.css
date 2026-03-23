@@ -2834,6 +2834,23 @@ td {
   line-height: 1.4;
 }
 
+.stagiaire-type-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stagiaire-type-filter-row label {
+  color: #4d6781;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.stagiaire-type-filter-row select {
+  min-width: 180px;
+  max-width: 260px;
+}
+
 .stagiaire-home-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(200px, 1fr));
@@ -3781,6 +3798,16 @@ td {
   .stagiaire-home-grid,
   .stagiaire-location-card {
     grid-template-columns: 1fr;
+  }
+
+  .stagiaire-type-filter-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .stagiaire-type-filter-row select {
+    width: 100%;
+    max-width: none;
   }
 
   .availability-layout {

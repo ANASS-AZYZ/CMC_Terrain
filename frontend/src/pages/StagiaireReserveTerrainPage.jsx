@@ -13,6 +13,7 @@ export default function StagiaireReserveTerrainPage() {
   const loading = useAppSelector((state) => state.terrains.loading)
   const reservations = useAppSelector((state) => state.reservations.items)
   const [imageIndexByTerrain, setImageIndexByTerrain] = useState({})
+  const [selectedTerrainType, setSelectedTerrainType] = useState('all')
   const locationLink = 'https://maps.app.goo.gl/dPyetBDqNWnQXYWT9'
   const mapEmbedSrc = 'https://www.google.com/maps?q=Cite+des+Metiers+et+des+Competences+de+Rabat-Sale-Kenitra&output=embed'
 
@@ -26,11 +27,25 @@ export default function StagiaireReserveTerrainPage() {
     [terrains],
   )
 
-  const capacityLabel = (capacity) => {
-    const maxPlayers = Number(capacity) || 0
-    const minPlayers = Math.max(2, maxPlayers - 10)
-    return `${minPlayers}-${maxPlayers} ${t('players')}`
+  const normalizeTerrainType = (typeValue) => {
+    const normalized = String(typeValue || '').trim().toLowerCase()
+    if (normalized === 'basket') return 'basketball'
+    if (normalized === 'gazon') return 'football 11'
+    return normalized
   }
+
+  const terrainTypeChoices = useMemo(() => {
+    const uniqueTypes = Array.from(new Set(reservableTerrains.map((terrain) => normalizeTerrainType(terrain.type)).filter(Boolean)))
+    return ['all', ...uniqueTypes]
+  }, [reservableTerrains])
+
+  const filteredTerrains = useMemo(() => {
+    if (selectedTerrainType === 'all') {
+      return reservableTerrains
+    }
+
+    return reservableTerrains.filter((terrain) => normalizeTerrainType(terrain.type) === selectedTerrainType)
+  }, [reservableTerrains, selectedTerrainType])
 
   const upcomingReservations = useMemo(() => {
     const now = new Date()
@@ -100,14 +115,29 @@ export default function StagiaireReserveTerrainPage() {
         <p>{t('bookYourFieldSubtitle')}</p>
       </header>
 
+      <div className="stagiaire-type-filter-row">
+        <label htmlFor="stagiaire-terrain-type-filter">{t('terrainType')}</label>
+        <select
+          id="stagiaire-terrain-type-filter"
+          value={selectedTerrainType}
+          onChange={(event) => setSelectedTerrainType(event.target.value)}
+        >
+          {terrainTypeChoices.map((type) => (
+            <option key={type} value={type}>
+              {type === 'all' ? 'All Types' : type.charAt(0).toUpperCase() + type.slice(1)}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {loading ? <p className="stagiaire-reserve-empty">{t('loadingTerrains')}</p> : null}
 
-      {!loading && reservableTerrains.length === 0 ? (
+      {!loading && filteredTerrains.length === 0 ? (
         <p className="stagiaire-reserve-empty">{t('noOnlineTerrains')}</p>
       ) : null}
 
       <div className="stagiaire-home-grid">
-        {reservableTerrains.map((terrain) => (
+        {filteredTerrains.map((terrain) => (
           <article key={terrain.id} className="stagiaire-home-card">
             {(() => {
               const images = getTerrainImages(terrain)
@@ -143,19 +173,7 @@ export default function StagiaireReserveTerrainPage() {
 
             <div className="stagiaire-home-card-top">
               <h3>{terrain.name}</h3>
-              <span className="terrain-status-badge active">{String(terrain.type || 'OUTDOOR').toUpperCase()}</span>
             </div>
-
-            <p className="stagiaire-home-meta">{terrain.location || 'CMC Campus'}</p>
-
-            <div className="stagiaire-home-features">
-              <span>{t('capacity')}: {capacityLabel(terrain.capacity)}</span>
-              <span>{t('floodlightsAvailable')}</span>
-            </div>
-
-            <p className="stagiaire-home-description">
-              {t('terrainCardDescription')}
-            </p>
 
             <button
               type="button"

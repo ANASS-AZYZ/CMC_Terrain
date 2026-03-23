@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
+import api from '../api/client'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
-import { createReservation, fetchReservations } from '../features/reservations/reservationsSlice'
+import { createReservation } from '../features/reservations/reservationsSlice'
 import { fetchTerrains } from '../features/terrains/terrainsSlice'
 
 const WEEK_DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
@@ -48,7 +49,6 @@ export default function StagiaireAvailabilityPage() {
   const navigate = useNavigate()
   const { terrainId } = useParams()
   const terrains = useAppSelector((state) => state.terrains.items)
-  const reservations = useAppSelector((state) => state.reservations.items)
   const user = useAppSelector((state) => state.auth.user)
 
   const [selectedDate, setSelectedDate] = useState('')
@@ -56,6 +56,7 @@ export default function StagiaireAvailabilityPage() {
   const [selectedSlotLabel, setSelectedSlotLabel] = useState('')
   const [reserving, setReserving] = useState(false)
   const [reserveError, setReserveError] = useState('')
+  const [availabilityReservations, setAvailabilityReservations] = useState([])
   const [displayedMonth, setDisplayedMonth] = useState(() => {
     const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
@@ -63,8 +64,33 @@ export default function StagiaireAvailabilityPage() {
 
   useEffect(() => {
     dispatch(fetchTerrains())
-    dispatch(fetchReservations())
   }, [dispatch])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadAvailabilityReservations = async () => {
+      try {
+        const { data } = await api.get('/reservations', {
+          params: { for_availability: 1 },
+        })
+
+        if (!cancelled) {
+          setAvailabilityReservations(Array.isArray(data) ? data : [])
+        }
+      } catch {
+        if (!cancelled) {
+          setAvailabilityReservations([])
+        }
+      }
+    }
+
+    loadAvailabilityReservations()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const terrain = useMemo(
     () => terrains.find((item) => item.id === Number(terrainId)),
@@ -86,7 +112,7 @@ export default function StagiaireAvailabilityPage() {
 
       if (slotStart < now) return false
 
-      const overlap = reservations.some((reservation) => {
+      const overlap = availabilityReservations.some((reservation) => {
         if (Number(reservation.terrain_id) !== Number(terrainId)) return false
         if (['cancelled', 'rejected', 'completed'].includes(String(reservation.status || ''))) return false
 
@@ -97,7 +123,7 @@ export default function StagiaireAvailabilityPage() {
 
       return !overlap
     })
-  }, [selectedDate, durationHours, reservations, terrainId])
+  }, [selectedDate, durationHours, availabilityReservations, terrainId])
 
   const today = useMemo(() => {
     const now = new Date()

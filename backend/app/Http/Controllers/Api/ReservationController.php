@@ -18,6 +18,18 @@ class ReservationController extends Controller
 
         $this->syncStatusesFromMatches();
 
+        if ($user && $user->role === 'stagiaire' && $request->boolean('for_availability')) {
+            $availabilityRows = Reservation::query()
+                ->select(['id', 'terrain_id', 'starts_at', 'ends_at', 'status'])
+                ->whereNull('parent_reservation_id')
+                ->where('ends_at', '>', now())
+                ->whereNotIn('status', ['cancelled', 'rejected', 'completed'])
+                ->latest('starts_at')
+                ->get();
+
+            return response()->json($availabilityRows);
+        }
+
         $query = Reservation::with(['terrain', 'match', 'creator'])
             ->whereNull('parent_reservation_id')
             ->latest('starts_at');
