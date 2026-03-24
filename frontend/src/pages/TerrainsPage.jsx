@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
+import { normalizeTerrainImageUrl } from '../api/imageUrls'
 import { deleteTerrain, fetchTerrains, updateTerrain } from '../features/terrains/terrainsSlice'
 
 export default function TerrainsPage() {
+  const SWIPE_MIN_DISTANCE = 40
+  const SLIDE_ANIMATION_DURATION_MS = 220
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -12,10 +15,20 @@ export default function TerrainsPage() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [imageIndexByTerrain, setImageIndexByTerrain] = useState({})
+  const [slideDirectionByTerrain, setSlideDirectionByTerrain] = useState({})
+  const touchStartByTerrainRef = useRef({})
+  const slideTimeoutByTerrainRef = useRef({})
 
   useEffect(() => {
     dispatch(fetchTerrains())
   }, [dispatch])
+
+  useEffect(() => {
+    const timeouts = slideTimeoutByTerrainRef.current
+    return () => {
+      Object.values(timeouts).forEach((timeoutId) => window.clearTimeout(timeoutId))
+    }
+  }, [])
 
   const onEdit = (terrain) => {
     navigate(`/admin/terrains/${terrain.id}/edit`)
@@ -81,7 +94,7 @@ export default function TerrainsPage() {
       merged.unshift(terrain.image_url)
     }
 
-    return Array.from(new Set(merged.filter(Boolean)))
+    return Array.from(new Set(merged.map(normalizeTerrainImageUrl).filter(Boolean)))
   }
 
   const goToPrevImage = (terrainId, imagesLength) => {
@@ -98,6 +111,68 @@ export default function TerrainsPage() {
       const next = (current + 1) % imagesLength
       return { ...prev, [terrainId]: next }
     })
+  }
+
+  const setSlideDirection = (terrainId, direction) => {
+    setSlideDirectionByTerrain((prev) => ({ ...prev, [terrainId]: direction }))
+
+    const currentTimeout = slideTimeoutByTerrainRef.current[terrainId]
+    if (currentTimeout) {
+      window.clearTimeout(currentTimeout)
+    }
+
+    slideTimeoutByTerrainRef.current[terrainId] = window.setTimeout(() => {
+      setSlideDirectionByTerrain((prev) => {
+        const next = { ...prev }
+        delete next[terrainId]
+        return next
+      })
+      delete slideTimeoutByTerrainRef.current[terrainId]
+    }, SLIDE_ANIMATION_DURATION_MS)
+  }
+
+  const goToPrevImageWithAnimation = (terrainId, imagesLength) => {
+    setSlideDirection(terrainId, 'prev')
+    goToPrevImage(terrainId, imagesLength)
+  }
+
+  const goToNextImageWithAnimation = (terrainId, imagesLength) => {
+    setSlideDirection(terrainId, 'next')
+    goToNextImage(terrainId, imagesLength)
+  }
+
+  const onImageTouchStart = (terrainId, event) => {
+    const touch = event.changedTouches?.[0]
+    if (!touch) return
+
+    touchStartByTerrainRef.current[terrainId] = {
+      x: touch.clientX,
+      y: touch.clientY,
+    }
+  }
+
+  const onImageTouchEnd = (terrainId, imagesLength, event) => {
+    if (imagesLength < 2) return
+
+    const touchStart = touchStartByTerrainRef.current[terrainId]
+    delete touchStartByTerrainRef.current[terrainId]
+
+    const touchEnd = event.changedTouches?.[0]
+    if (!touchStart || !touchEnd) return
+
+    const deltaX = touchEnd.clientX - touchStart.x
+    const deltaY = touchEnd.clientY - touchStart.y
+
+    if (Math.abs(deltaX) < SWIPE_MIN_DISTANCE || Math.abs(deltaX) <= Math.abs(deltaY)) {
+      return
+    }
+
+    if (deltaX < 0) {
+      goToNextImageWithAnimation(terrainId, imagesLength)
+      return
+    }
+
+    goToPrevImageWithAnimation(terrainId, imagesLength)
   }
 
   return (
@@ -140,26 +215,18 @@ export default function TerrainsPage() {
               const currentIndex = images.length > 0 ? (imageIndexByTerrain[terrain.id] ?? 0) % images.length : 0
 
               return images.length > 0 ? (
-                <div className="terrain-card-image-wrap">
-                  <img src={images[currentIndex]} alt={terrain.name} className="terrain-card-image" />
+                <div
+                  className="terrain-card-image-wrap"
+                  onTouchStart={(event) => onImageTouchStart(terrain.id, event)}
+                  onTouchEnd={(event) => onImageTouchEnd(terrain.id, images.length, event)}
+                >
+                  <img
+                    src={images[currentIndex]}
+                    alt={terrain.name}
+                    className={`terrain-card-image ${slideDirectionByTerrain[terrain.id] ? `is-sliding-${slideDirectionByTerrain[terrain.id]}` : ''}`}
+                  />
                   {images.length > 1 ? (
                     <>
-                      <button
-                        type="button"
-                        className="terrain-image-nav prev"
-                        onClick={() => goToPrevImage(terrain.id, images.length)}
-                        aria-label="Previous image"
-                      >
-                        {'<'}
-                      </button>
-                      <button
-                        type="button"
-                        className="terrain-image-nav next"
-                        onClick={() => goToNextImage(terrain.id, images.length)}
-                        aria-label="Next image"
-                      >
-                        {'>'}
-                      </button>
                       <span className="terrain-image-counter">{currentIndex + 1}/{images.length}</span>
                     </>
                   ) : null}

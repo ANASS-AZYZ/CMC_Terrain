@@ -27,11 +27,13 @@ class Reservation extends Model
         'ends_at',
         'status',
         'created_by',
+        'scanned_by',
     ];
 
     protected $casts = [
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
+        'scanned_by' => 'integer',
     ];
 
     public function terrain(): BelongsTo
@@ -47,6 +49,11 @@ class Reservation extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function scanner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'scanned_by');
     }
 
     public function parentReservation(): BelongsTo

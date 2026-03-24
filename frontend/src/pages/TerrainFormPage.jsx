@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
+import { normalizeTerrainImageUrl } from '../api/imageUrls'
 import { createTerrain, fetchTerrains, updateTerrain } from '../features/terrains/terrainsSlice'
 
 const initialForm = {
@@ -124,14 +125,17 @@ export default function TerrainFormPage() {
     existingImages.forEach((url) => payload.append('image_urls[]', url))
     newImageFiles.forEach((file) => payload.append('images[]', file))
 
-    if (isEdit) {
-      await dispatch(updateTerrain({ id: Number(terrainId), payload }))
-    } else {
-      await dispatch(createTerrain(payload))
-    }
+    try {
+      const action = isEdit
+        ? await dispatch(updateTerrain({ id: Number(terrainId), payload }))
+        : await dispatch(createTerrain(payload))
 
-    setSaving(false)
-    navigate('/admin/terrains')
+      if (updateTerrain.fulfilled.match(action) || createTerrain.fulfilled.match(action)) {
+        navigate('/admin/terrains')
+      }
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -158,7 +162,7 @@ export default function TerrainFormPage() {
             <div className="terrain-form-gallery-grid">
               {existingImages.map((imageUrl) => (
                 <div key={imageUrl} className="terrain-form-gallery-item">
-                  <img src={imageUrl} alt={currentTerrain?.name || 'Terrain'} className="terrain-form-preview" />
+                  <img src={normalizeTerrainImageUrl(imageUrl)} alt={currentTerrain?.name || 'Terrain'} className="terrain-form-preview" />
                   <button type="button" className="terrain-gallery-remove-btn" onClick={() => removeExistingImage(imageUrl)}>
                     Remove
                   </button>

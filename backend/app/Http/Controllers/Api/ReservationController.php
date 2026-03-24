@@ -30,7 +30,7 @@ class ReservationController extends Controller
             return response()->json($availabilityRows);
         }
 
-        $query = Reservation::with(['terrain', 'match', 'creator'])
+        $query = Reservation::with(['terrain', 'match', 'creator', 'scanner'])
             ->whereNull('parent_reservation_id')
             ->latest('starts_at');
 
@@ -156,7 +156,7 @@ class ReservationController extends Controller
 
         $data['status'] = $this->resolveStatusFromMatch((int) ($data['match_id'] ?? 0), (string) $data['status']);
 
-        $reservation = Reservation::create($data)->load(['terrain', 'match', 'creator']);
+        $reservation = Reservation::create($data)->load(['terrain', 'match', 'creator', 'scanner']);
 
         return response()->json($reservation, 201);
     }
@@ -172,7 +172,7 @@ class ReservationController extends Controller
         $this->syncStatusesFromMatches();
 
         $reservation = Reservation::query()
-            ->with(['terrain', 'creator'])
+            ->with(['terrain', 'creator', 'scanner'])
             ->where('reservation_code', $normalizedCode)
             ->whereNull('parent_reservation_id')
             ->first();
@@ -274,7 +274,7 @@ class ReservationController extends Controller
 
         $reservation->update($data);
 
-        return response()->json($reservation->load(['terrain', 'match', 'creator']));
+        return response()->json($reservation->load(['terrain', 'match', 'creator', 'scanner']));
     }
 
     public function updateStatus(Request $request, Reservation $reservation): JsonResponse
@@ -302,14 +302,18 @@ class ReservationController extends Controller
 
         $mainReservation->update([
             'status' => $data['status'],
+            'scanned_by' => $data['status'] === 'completed' ? (int) $user->id : null,
         ]);
 
         
         Reservation::query()
             ->where('parent_reservation_id', $mainReservation->id)
-            ->update(['status' => $data['status']]);
+            ->update([
+                'status' => $data['status'],
+                'scanned_by' => $data['status'] === 'completed' ? (int) $user->id : null,
+            ]);
 
-        return response()->json($mainReservation->load(['terrain', 'match', 'creator']));
+        return response()->json($mainReservation->load(['terrain', 'match', 'creator', 'scanner']));
     }
 
     public function cancelOwn(Request $request, Reservation $reservation): JsonResponse
@@ -346,7 +350,7 @@ class ReservationController extends Controller
             ->whereNotIn('status', ['completed', 'rejected'])
             ->update(['status' => 'cancelled']);
 
-        return response()->json($mainReservation->load(['terrain', 'match', 'creator']));
+        return response()->json($mainReservation->load(['terrain', 'match', 'creator', 'scanner']));
     }
 
     public function confirmByQr(Request $request): JsonResponse
@@ -394,14 +398,20 @@ class ReservationController extends Controller
             return response()->json(['message' => 'Reservation cannot be completed in its current status.'], 422);
         }
 
-        $mainReservation->update(['status' => 'completed']);
+        $mainReservation->update([
+            'status' => 'completed',
+            'scanned_by' => (int) $user->id,
+        ]);
 
         Reservation::query()
             ->where('parent_reservation_id', $mainReservation->id)
             ->whereIn('status', ['pending', 'on_hold', 'confirmed'])
-            ->update(['status' => 'completed']);
+            ->update([
+                'status' => 'completed',
+                'scanned_by' => (int) $user->id,
+            ]);
 
-        return response()->json($mainReservation->load(['terrain', 'match', 'creator']));
+        return response()->json($mainReservation->load(['terrain', 'match', 'creator', 'scanner']));
     }
 
     private function generateReservationCode(): string
@@ -478,7 +488,7 @@ class ReservationController extends Controller
             'status' => 'pending',
             'created_by' => (int) $stagiaire->id,
             'reservation_code' => null,
-        ])->load(['terrain', 'match', 'creator']);
+        ])->load(['terrain', 'match', 'creator', 'scanner']);
 
         return response()->json($newReservation, 201);
     }

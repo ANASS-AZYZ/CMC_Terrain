@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
+import { normalizeTerrainImageUrl } from '../api/imageUrls'
 import { fetchReservations } from '../features/reservations/reservationsSlice'
 import { fetchTerrains } from '../features/terrains/terrainsSlice'
 
 export default function StagiaireReserveTerrainPage() {
+  const SWIPE_MIN_DISTANCE = 40
+  const SLIDE_ANIMATION_DURATION_MS = 220
   const { t } = useTranslation()
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
@@ -13,7 +16,10 @@ export default function StagiaireReserveTerrainPage() {
   const loading = useAppSelector((state) => state.terrains.loading)
   const reservations = useAppSelector((state) => state.reservations.items)
   const [imageIndexByTerrain, setImageIndexByTerrain] = useState({})
+  const [slideDirectionByTerrain, setSlideDirectionByTerrain] = useState({})
   const [selectedTerrainType, setSelectedTerrainType] = useState('all')
+  const touchStartByTerrainRef = useRef({})
+  const slideTimeoutByTerrainRef = useRef({})
   const locationLink = 'https://maps.app.goo.gl/dPyetBDqNWnQXYWT9'
   const mapEmbedSrc = 'https://www.google.com/maps?q=Cite+des+Metiers+et+des+Competences+de+Rabat-Sale-Kenitra&output=embed'
 
@@ -21,6 +27,13 @@ export default function StagiaireReserveTerrainPage() {
     dispatch(fetchTerrains())
     dispatch(fetchReservations())
   }, [dispatch])
+
+  useEffect(() => {
+    const timeouts = slideTimeoutByTerrainRef.current
+    return () => {
+      Object.values(timeouts).forEach((timeoutId) => window.clearTimeout(timeoutId))
+    }
+  }, [])
 
   const reservableTerrains = useMemo(
     () => terrains.filter((terrain) => terrain.status === 'active' && Boolean(terrain.online_booking)),
@@ -89,7 +102,7 @@ export default function StagiaireReserveTerrainPage() {
       merged.unshift(terrain.image_url)
     }
 
-    return Array.from(new Set(merged.filter(Boolean)))
+    return Array.from(new Set(merged.map(normalizeTerrainImageUrl).filter(Boolean)))
   }
 
   const goToPrevImage = (terrainId, imagesLength) => {
@@ -106,6 +119,68 @@ export default function StagiaireReserveTerrainPage() {
       const next = (current + 1) % imagesLength
       return { ...prev, [terrainId]: next }
     })
+  }
+
+  const setSlideDirection = (terrainId, direction) => {
+    setSlideDirectionByTerrain((prev) => ({ ...prev, [terrainId]: direction }))
+
+    const currentTimeout = slideTimeoutByTerrainRef.current[terrainId]
+    if (currentTimeout) {
+      window.clearTimeout(currentTimeout)
+    }
+
+    slideTimeoutByTerrainRef.current[terrainId] = window.setTimeout(() => {
+      setSlideDirectionByTerrain((prev) => {
+        const next = { ...prev }
+        delete next[terrainId]
+        return next
+      })
+      delete slideTimeoutByTerrainRef.current[terrainId]
+    }, SLIDE_ANIMATION_DURATION_MS)
+  }
+
+  const goToPrevImageWithAnimation = (terrainId, imagesLength) => {
+    setSlideDirection(terrainId, 'prev')
+    goToPrevImage(terrainId, imagesLength)
+  }
+
+  const goToNextImageWithAnimation = (terrainId, imagesLength) => {
+    setSlideDirection(terrainId, 'next')
+    goToNextImage(terrainId, imagesLength)
+  }
+
+  const onImageTouchStart = (terrainId, event) => {
+    const touch = event.changedTouches?.[0]
+    if (!touch) return
+
+    touchStartByTerrainRef.current[terrainId] = {
+      x: touch.clientX,
+      y: touch.clientY,
+    }
+  }
+
+  const onImageTouchEnd = (terrainId, imagesLength, event) => {
+    if (imagesLength < 2) return
+
+    const touchStart = touchStartByTerrainRef.current[terrainId]
+    delete touchStartByTerrainRef.current[terrainId]
+
+    const touchEnd = event.changedTouches?.[0]
+    if (!touchStart || !touchEnd) return
+
+    const deltaX = touchEnd.clientX - touchStart.x
+    const deltaY = touchEnd.clientY - touchStart.y
+
+    if (Math.abs(deltaX) < SWIPE_MIN_DISTANCE || Math.abs(deltaX) <= Math.abs(deltaY)) {
+      return
+    }
+
+    if (deltaX < 0) {
+      goToNextImageWithAnimation(terrainId, imagesLength)
+      return
+    }
+
+    goToPrevImageWithAnimation(terrainId, imagesLength)
   }
 
   return (
@@ -144,26 +219,18 @@ export default function StagiaireReserveTerrainPage() {
               const currentIndex = images.length > 0 ? (imageIndexByTerrain[terrain.id] ?? 0) % images.length : 0
 
               return images.length > 0 ? (
-                <div className="stagiaire-home-image-wrap">
-                  <img src={images[currentIndex]} alt={terrain.name} className="stagiaire-home-image" />
+                <div
+                  className="stagiaire-home-image-wrap"
+                  onTouchStart={(event) => onImageTouchStart(terrain.id, event)}
+                  onTouchEnd={(event) => onImageTouchEnd(terrain.id, images.length, event)}
+                >
+                  <img
+                    src={images[currentIndex]}
+                    alt={terrain.name}
+                    className={`stagiaire-home-image ${slideDirectionByTerrain[terrain.id] ? `is-sliding-${slideDirectionByTerrain[terrain.id]}` : ''}`}
+                  />
                   {images.length > 1 ? (
                     <>
-                      <button
-                        type="button"
-                        className="terrain-image-nav prev"
-                        onClick={() => goToPrevImage(terrain.id, images.length)}
-                        aria-label="Previous image"
-                      >
-                        {'<'}
-                      </button>
-                      <button
-                        type="button"
-                        className="terrain-image-nav next"
-                        onClick={() => goToNextImage(terrain.id, images.length)}
-                        aria-label="Next image"
-                      >
-                        {'>'}
-                      </button>
                       <span className="terrain-image-counter">{currentIndex + 1}/{images.length}</span>
                     </>
                   ) : null}
@@ -174,6 +241,10 @@ export default function StagiaireReserveTerrainPage() {
             <div className="stagiaire-home-card-top">
               <h3>{terrain.name}</h3>
             </div>
+
+            <p className="stagiaire-home-meta">
+              {t('playersCapacity')}: {Number(terrain.capacity) || '-'}
+            </p>
 
             <button
               type="button"

@@ -51,6 +51,7 @@ export default function ReservationsPage() {
 
   const addPath = user?.role === 'stagiaire' ? '/stagiaire/home' : '/admin/reservations/new'
   const isMonitor = user?.role === 'monitor'
+  const isAdmin = user?.role === 'admin'
 
   useEffect(() => {
     dispatch(fetchReservations())
@@ -81,6 +82,7 @@ export default function ReservationsPage() {
           prenom,
           code: reservation.reservation_code ?? '-------',
           ownerName: reservation.creator?.name ?? '-',
+          scannedByName: reservation.scanner?.name ?? '-',
           terrainLabel: reservation.terrain?.name ?? reservation.terrain_id,
           dateLabel: startsAt.toLocaleDateString(),
           timeLabel: `${formatTime(startsAt)} - ${formatTime(endsAt)}`,
@@ -125,9 +127,53 @@ export default function ReservationsPage() {
       return
     }
 
-    const foundReservation = rows.find((reservation) => String(reservation.code) === rawValue || String(reservation.id) === rawValue)
+    const normalizedInput = rawValue.toLowerCase()
+    const normalizedCodeInput = normalizedInput.replace(/^res[-\s_]*/i, '')
+
+    const foundReservation = rows.find((reservation) => {
+      const reservationId = String(reservation.id)
+      const reservationCode = String(reservation.code || '').toLowerCase()
+      const reservationCodeOnly = reservationCode.replace(/^res[-\s_]*/i, '')
+
+      return (
+        reservationId === normalizedInput
+        || reservationCode === normalizedInput
+        || reservationCodeOnly === normalizedCodeInput
+        || `res-${reservationCodeOnly}` === normalizedInput
+      )
+    }) || reservationLookupMatches[0]
+
     setLookupResult({ found: Boolean(foundReservation), reservation: foundReservation || null })
   }
+
+  const reservationLookupMatches = useMemo(() => {
+    const rawValue = reservationLookupId.trim().toLowerCase()
+    if (!rawValue) return []
+
+    const normalizedCodeInput = rawValue.replace(/^res[-\s_]*/i, '')
+
+    const matches = rows.filter((reservation) => {
+      const fields = [
+        String(reservation.id || ''),
+        `res-${String(reservation.code || '')}`,
+        String(reservation.code || ''),
+        String(reservation.ownerName || ''),
+        String(reservation.scannedByName || ''),
+        String(reservation.terrainLabel || ''),
+        String(reservation.timeLabel || ''),
+        String(reservation.dateLabel || ''),
+        String(reservation.starts_at || ''),
+      ]
+
+      const hasFieldMatch = fields.some((field) => field.toLowerCase().includes(rawValue))
+      if (hasFieldMatch) return true
+
+      const codeOnly = String(reservation.code || '').toLowerCase().replace(/^res[-\s_]*/i, '')
+      return codeOnly.includes(normalizedCodeInput)
+    })
+
+    return matches.slice(0, 8)
+  }, [reservationLookupId, rows])
 
   const statusManagedRows = useMemo(
     () => rows.filter((reservation) => reservation.status === 'completed' || reservation.status === 'cancelled'),
@@ -661,7 +707,10 @@ export default function ReservationsPage() {
             <input
               type="text"
               value={reservationLookupId}
-              onChange={(e) => setReservationLookupId(e.target.value)}
+              onChange={(e) => {
+                setReservationLookupId(e.target.value)
+                setLookupResult(null)
+              }}
               placeholder={t('reservationIdPlaceholder')}
               className="reservation-checker-input"
             />
@@ -669,6 +718,28 @@ export default function ReservationsPage() {
               {t('checkReservation')}
             </button>
           </div>
+
+          {reservationLookupId.trim() && !lookupResult ? (
+            <div className="reservation-search-suggestions" role="listbox" aria-label="Reservation search suggestions">
+              {reservationLookupMatches.length === 0 ? (
+                <p className="reservation-checker-hint">{t('noResults')}</p>
+              ) : (
+                reservationLookupMatches.map((reservation) => (
+                  <button
+                    key={`lookup-${reservation.id}`}
+                    type="button"
+                    className="reservation-search-item"
+                    onClick={() => {
+                      setReservationLookupId(`RES-${reservation.code}`)
+                    }}
+                  >
+                    <strong>{`RES-${reservation.code}`}</strong>
+                    <span>{`${reservation.ownerName} - ${reservation.dateLabel} - ${reservation.timeLabel}`}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : null}
 
           {lookupResult ? (
             <div className={`reservation-check-result ${lookupResult.found ? 'found' : 'missing'}`}>
@@ -716,6 +787,7 @@ export default function ReservationsPage() {
               <th>{t('reservationNumber')}</th>
               <th className="hide-on-mobile">{t('terrain')}</th>
               <th className="hide-on-mobile">{t('time')}</th>
+              {isAdmin ? <th className="hide-on-mobile">{t('scannedBy')}</th> : null}
               <th>{t('actions')}</th>
             </tr>
           </thead>
@@ -727,6 +799,7 @@ export default function ReservationsPage() {
                 </td>
                 <td className="hide-on-mobile">{reservation.terrainLabel}</td>
                 <td className="hide-on-mobile">{reservation.timeLabel}</td>
+                {isAdmin ? <td className="hide-on-mobile">{reservation.scannedByName}</td> : null}
                 <td className="reservation-actions-cell">
                   <button
                     type="button"
